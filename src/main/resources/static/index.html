@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>ChessMate</title>
+</head>
+<body>
+<h1>ChessMate</h1>
+
+<div id="authButtons"></div>
+
+<script>
+    const accessToken = localStorage.getItem('accessToken');
+    const authButtons = document.getElementById('authButtons');
+
+    if (accessToken) {
+        authButtons.innerHTML = `
+                <button onclick="logout()">로그아웃</button>
+            `;
+    } else {
+        authButtons.innerHTML = `
+                <a href="/signup.html">회원가입</a>
+                <a href="/login.html">로그인</a>
+            `;
+    }
+
+    async function logout() {
+        await fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + accessToken }
+        });
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        window.location.reload();
+    }
+</script>
+</body>
+</html>
