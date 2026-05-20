@@ -3,3 +3,7 @@ spring:
     name: chess-server
   profiles:
     active: local
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    disable-swagger-default-url: true

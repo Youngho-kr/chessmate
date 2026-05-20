@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>회원가입 - ChessMate</title>
+</head>
+<body>
+<h1>회원가입</h1>
+
+<form id="signupForm">
+    <div>
+        <label>이메일</label>
+        <input type="email" id="email" required>
+    </div>
+    <div>
+        <label>비밀번호</label>
+        <input type="password" id="password" required>
+    </div>
+    <div>
+        <label>닉네임</label>
+        <input type="text" id="nickname" required>
+    </div>
+    <button type="submit">회원가입</button>
+</form>
+
+<p id="message"></p>
+
+<a href="/login.html">로그인으로 이동</a>
+
+<script>
+    document.getElementById('signupForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const response = await fetch('/api/auth/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                nickname: document.getElementById('nickname').value
+            })
+        });
+
+        if (response.status === 201) {
+            window.location.href = '/login.html'
+        } else {
+            document.getElementById('message').textContent = '회원가입 실패. 다시 시도해주세요.';
+        }
+    });
+</script>
+</body>
+</html>
