@@ -8,6 +8,16 @@ import java.time.LocalDateTime;
 @Table(name = "users")
 public class User {
 
+    protected User() {
+
+    }
+
+    public User(String email, String password, String nickname) {
+        this.email = email;
+        this.password = password;
+        this.nickname = nickname;
+    }
+
     @Id @GeneratedValue
     private Long id;
 
