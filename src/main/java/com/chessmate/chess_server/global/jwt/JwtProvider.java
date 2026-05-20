@@ -3,6 +3,7 @@ package com.chessmate.chess_server.global.jwt;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -13,7 +14,7 @@ import java.util.Date;
 public class JwtProvider {
     private final SecretKey secretKey;
     private final long accessExpiration;
-    private final long refreshExpiration;
+    @Getter private final long refreshExpiration;
 
     public JwtProvider(
             @Value("${jwt.secret}") String secret,
