@@ -1,7 +1,8 @@
 package com.chessmate.chess_server.domain.user;
 
 import com.chessmate.chess_server.domain.user.dto.LoginRequest;
-import com.chessmate.chess_server.domain.user.dto.LoginResponse;
+import com.chessmate.chess_server.domain.user.dto.TokenResponse;
+import com.chessmate.chess_server.domain.user.dto.ReissueRequest;
 import com.chessmate.chess_server.domain.user.dto.SignupRequest;
 import com.chessmate.chess_server.global.jwt.JwtProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -39,7 +40,7 @@ public class UserService {
         userRepository.save(user);
     }
 
-    public LoginResponse login(LoginRequest request) {
+    public TokenResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다."));
 
@@ -52,10 +53,36 @@ public class UserService {
 
         refreshTokenRepository.save(user.getEmail(), refreshToken, jwtProvider.getRefreshExpiration());
 
-        return new LoginResponse(accessToken, refreshToken);
+        return new TokenResponse(accessToken, refreshToken);
     }
 
     public void logout(String email) {
         refreshTokenRepository.delete(email);
+    }
+
+    /*
+     * Access Token 재발급
+     */
+    public TokenResponse reissue(ReissueRequest request) {
+
+        String refreshToken = request.getRefreshToken();
+
+        if (!jwtProvider.isValid(refreshToken)) {
+            throw new IllegalArgumentException("유효하지 않은 Refresh Token 입니다.");
+        }
+
+        String email = jwtProvider.getEmail(refreshToken);
+
+        String savedToken = refreshTokenRepository.find(email);
+        if (!refreshToken.equals(savedToken)) {
+            throw new IllegalArgumentException("Refresh Token이 일치하지 않습니다.");
+        }
+
+        String newAccessToken = jwtProvider.generateAccessToken(email);
+        String newRefreshToken = jwtProvider.generateRefreshToken(email);
+
+        refreshTokenRepository.save(email, newRefreshToken, jwtProvider.getRefreshExpiration());
+
+        return new TokenResponse(newAccessToken, newRefreshToken);
     }
 }

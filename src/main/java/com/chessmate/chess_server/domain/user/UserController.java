@@ -1,7 +1,8 @@
 package com.chessmate.chess_server.domain.user;
 
 import com.chessmate.chess_server.domain.user.dto.LoginRequest;
-import com.chessmate.chess_server.domain.user.dto.LoginResponse;
+import com.chessmate.chess_server.domain.user.dto.ReissueRequest;
+import com.chessmate.chess_server.domain.user.dto.TokenResponse;
 import com.chessmate.chess_server.domain.user.dto.SignupRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,8 +28,8 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
-        LoginResponse response = userService.login(request);
+    public ResponseEntity<TokenResponse> login(@RequestBody LoginRequest request) {
+        TokenResponse response = userService.login(request);
         return ResponseEntity.ok(response);
     }
 
@@ -36,5 +37,11 @@ public class UserController {
     public ResponseEntity<Void> logout(@AuthenticationPrincipal String email) {
         userService.logout(email);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/reissue")
+    public ResponseEntity<TokenResponse> reissue(@RequestBody ReissueRequest request) {
+        TokenResponse response = userService.reissue(request);
+        return ResponseEntity.ok(response);
     }
 }
