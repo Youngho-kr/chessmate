@@ -11,6 +11,7 @@
 
 <a href="/">메인으로</a>
 
+<script src="/auth.js"></script>
 <script>
     const accessToken = localStorage.getItem('accessToken');
 
@@ -18,15 +19,8 @@
         window.location.href = '/login.html';
     }
 
-    fetch('/api/users/me', {
-        headers: { 'Authorization': 'Bearer ' + accessToken }
-    })
-        .then(res => {
-            if (res.status === 401) {
-                window.location.href = '/login.html';
-            }
-            return res.json();
-        })
+    authFetch('/api/users/me')
+        .then(res => res.json())
         .then(data => {
             document.getElementById('profile').innerHTML = `
                 <p>이메일: ${data.email}</p>
