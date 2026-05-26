@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>프로필 - ChessMate</title>
+</head>
+<body>
+<h1>내 프로필</h1>
+
+<div id="profile"></div>
+
+<a href="/">메인으로</a>
+
+<script>
+    const accessToken = localStorage.getItem('accessToken');
+
+    if (!accessToken) {
+        window.location.href = '/login.html';
+    }
+
+    fetch('/api/users/me', {
+        headers: { 'Authorization': 'Bearer ' + accessToken }
+    })
+        .then(res => {
+            if (res.status === 401) {
+                window.location.href = '/login.html';
+            }
+            return res.json();
+        })
+        .then(data => {
+            document.getElementById('profile').innerHTML = `
+                <p>이메일: ${data.email}</p>
+                <p>닉네임: ${data.nickname}</p>
+                <p>ELO 레이팅: ${data.eloRating}</p>
+            `;
+        });
+</script>
+</body>
+</html>
