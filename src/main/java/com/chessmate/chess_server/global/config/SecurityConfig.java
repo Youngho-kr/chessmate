@@ -39,7 +39,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/signup", "/api/auth/login").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .requestMatchers("/", "/*.html").permitAll()
+                        .requestMatchers("/", "/*.html", "/*.js", "/*.css").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(
