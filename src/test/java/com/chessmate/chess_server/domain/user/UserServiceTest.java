@@ -1,9 +1,6 @@
 package com.chessmate.chess_server.domain.user;
 
-import com.chessmate.chess_server.domain.user.dto.LoginRequest;
-import com.chessmate.chess_server.domain.user.dto.ReissueRequest;
-import com.chessmate.chess_server.domain.user.dto.TokenResponse;
-import com.chessmate.chess_server.domain.user.dto.SignupRequest;
+import com.chessmate.chess_server.domain.user.dto.*;
 import com.chessmate.chess_server.global.jwt.JwtProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -11,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import javax.swing.text.html.Option;
 import java.util.Optional;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -172,6 +170,31 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.reissue(request))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Refresh Token이 일치하지 않습니다.");
+    }
+
+    @Test
+    @DisplayName("프로필 조회")
+    void getProfile() {
+        String email = "test@test.com";
+        String nickname = "user";
+        User user = new User(email, passwordEncoder.encode("password123"), nickname);
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+
+        UserProfileResponse response = userService.getProfile(email);
+
+        assertThat(response.getEmail()).isEqualTo(email);
+        assertThat(response.getNickname()).isEqualTo(nickname);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 프로필 조회 시 예외 발생")
+    void getProfile_notFound() {
+        when(userRepository.findByEmail(any())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.getProfile("notfound@test.com"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("존재하지 않는 회원입니다.");
     }
 
     private SignupRequest createRequest(String email, String password, String nickname) {
