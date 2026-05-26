@@ -1,12 +1,13 @@
 package com.chessmate.chess_server.domain.user;
 
 import com.chessmate.chess_server.domain.user.dto.LoginRequest;
-import com.chessmate.chess_server.domain.user.dto.LoginResponse;
+import com.chessmate.chess_server.domain.user.dto.ReissueRequest;
+import com.chessmate.chess_server.domain.user.dto.TokenResponse;
 import com.chessmate.chess_server.domain.user.dto.SignupRequest;
 import com.chessmate.chess_server.global.jwt.JwtProvider;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -91,7 +92,7 @@ class UserServiceTest {
 
         when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(user));
 
-        LoginResponse response = userService.login(request);
+        TokenResponse response = userService.login(request);
 
         assertThat(response.getAccessToken()).isNotNull();
         assertThat(response.getRefreshToken()).isNotNull();
@@ -124,6 +125,53 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.login(request))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("이메일 또는 비밀번호가 올바르지 않습니다.");
+    }
+
+    @Test
+    @DisplayName("Access Token 재발급")
+    void reissue() {
+
+        String email = "test@test.com";
+        String refreshToken = jwtProvider.generateRefreshToken(email);
+
+        ReissueRequest request = new ReissueRequest();
+        request.setRefreshToken(refreshToken);
+
+        when(refreshTokenRepository.find(email)).thenReturn(refreshToken);
+
+        TokenResponse response = userService.reissue(request);
+
+        assertThat(response.getAccessToken()).isNotNull();
+        assertThat(response.getRefreshToken()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("유효하지 않은 Refresh Token으로 재발급 시 예외 발생")
+    void reissue_invalidToken() {
+
+        ReissueRequest request = new ReissueRequest();
+        request.setRefreshToken("invalid.token.value");
+
+        assertThatThrownBy(() -> userService.reissue(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("유효하지 않은 Refresh Token 입니다.");
+    }
+
+    @Test
+    @DisplayName("저장된 Refresh Token과 일치하지 않으면 예외 발생")
+    void reissue_tokenMismatch() {
+
+        String email = "test@test.com";
+        String refreshToken = jwtProvider.generateRefreshToken(email);
+
+        ReissueRequest request = new ReissueRequest();
+        request.setRefreshToken(refreshToken);
+
+        when(refreshTokenRepository.find(email)).thenReturn("different.token");
+
+        assertThatThrownBy(() -> userService.reissue(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Refresh Token이 일치하지 않습니다.");
     }
 
     private SignupRequest createRequest(String email, String password, String nickname) {
