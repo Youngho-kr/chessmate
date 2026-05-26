@@ -1,9 +1,6 @@
 package com.chessmate.chess_server.domain.user;
 
-import com.chessmate.chess_server.domain.user.dto.LoginRequest;
-import com.chessmate.chess_server.domain.user.dto.TokenResponse;
-import com.chessmate.chess_server.domain.user.dto.ReissueRequest;
-import com.chessmate.chess_server.domain.user.dto.SignupRequest;
+import com.chessmate.chess_server.domain.user.dto.*;
 import com.chessmate.chess_server.global.jwt.JwtProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -84,5 +81,16 @@ public class UserService {
         refreshTokenRepository.save(email, newRefreshToken, jwtProvider.getRefreshExpiration());
 
         return new TokenResponse(newAccessToken, newRefreshToken);
+    }
+
+    /*
+     * 사용자 프로필 조회
+     */
+    public UserProfileResponse getProfile(String email) {
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() ->  new IllegalArgumentException("존재하지 않는 회원입니다."));
+
+        return new UserProfileResponse(user);
     }
 }
