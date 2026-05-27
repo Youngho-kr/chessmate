@@ -41,3 +41,6 @@ out/
 
 ### Local Environment ###
 application-local.yml
+
+# H2 file database
+data/

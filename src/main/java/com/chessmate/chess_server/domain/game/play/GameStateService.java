@@ -37,7 +37,7 @@ public class GameStateService {
             if (value == null) return null;
             return objectMapper.readValue(value, GameState.class);
         } catch (Exception e) {
-            throw new RuntimeException("게임 상태 조회 실패", e);
+            return null;
         }
     }
 

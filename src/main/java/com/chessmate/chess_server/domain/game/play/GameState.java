@@ -1,6 +1,7 @@
 package com.chessmate.chess_server.domain.game.play;
 
 import com.chessmate.chess_server.domain.game.common.PlayerColor;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -11,6 +12,8 @@ import java.util.List;
 @Setter
 public class GameState {
 
+    private static final String DEFAULT_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
     private String gameId;
     private String whiteEmail;
     private String blackEmail;
@@ -20,14 +23,19 @@ public class GameState {
     private long blackTimeLeftMs;
     private List<String> moves;
 
-    public GameState(String gameId, String whiteEmail, String blackEmail, long timeLimit) {
-        this.gameId = gameId;
-        this.whiteEmail = whiteEmail;
-        this.blackEmail = blackEmail;
-        this.fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        this.turn = PlayerColor.WHITE;
-        this.whiteTimeLeftMs = timeLimit;
-        this.blackTimeLeftMs = timeLimit;
+    public GameState() {
         this.moves = new ArrayList<>();
+    }
+
+    public static GameState create(String gameId, String whiteEmail, String blackEmail, long timeLimit) {
+        GameState state = new GameState();
+        state.gameId = gameId;
+        state.whiteEmail = whiteEmail;
+        state.blackEmail = blackEmail;
+        state.fen = DEFAULT_FEN;
+        state.turn = PlayerColor.WHITE;
+        state.whiteTimeLeftMs = timeLimit;
+        state.blackTimeLeftMs = timeLimit;
+        return state;
     }
 }
