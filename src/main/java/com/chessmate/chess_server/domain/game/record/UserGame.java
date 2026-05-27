@@ -1,5 +1,6 @@
-package com.chessmate.chess_server.domain.game;
+package com.chessmate.chess_server.domain.game.record;
 
+import com.chessmate.chess_server.domain.game.common.PlayerColor;
 import com.chessmate.chess_server.domain.user.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;

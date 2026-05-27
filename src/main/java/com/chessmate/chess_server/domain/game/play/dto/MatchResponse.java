@@ -1,6 +1,6 @@
-package com.chessmate.chess_server.domain.game.dto;
+package com.chessmate.chess_server.domain.game.play.dto;
 
-import com.chessmate.chess_server.domain.game.PlayerColor;
+import com.chessmate.chess_server.domain.game.common.PlayerColor;
 import lombok.Getter;
 
 @Getter

@@ -1,7 +1,6 @@
-package com.chessmate.chess_server.domain.game;
+package com.chessmate.chess_server.domain.game.play;
 
 import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;

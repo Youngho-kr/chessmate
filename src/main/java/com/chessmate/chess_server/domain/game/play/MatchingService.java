@@ -1,6 +1,7 @@
-package com.chessmate.chess_server.domain.game;
+package com.chessmate.chess_server.domain.game.play;
 
-import com.chessmate.chess_server.domain.game.dto.MatchResponse;
+import com.chessmate.chess_server.domain.game.common.PlayerColor;
+import com.chessmate.chess_server.domain.game.play.dto.MatchResponse;
 import com.chessmate.chess_server.domain.user.User;
 import com.chessmate.chess_server.domain.user.UserRepository;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
