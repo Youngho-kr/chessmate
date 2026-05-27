@@ -1,4 +1,4 @@
-package com.chessmate.chess_server.domain.game;
+package com.chessmate.chess_server.domain.game.common;
 
 public enum ResultReason {
     // 승리

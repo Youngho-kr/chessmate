@@ -1,4 +1,4 @@
-package com.chessmate.chess_server.domain.game;
+package com.chessmate.chess_server.domain.game.play;
 
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -37,7 +37,7 @@ public class GameStateService {
             if (value == null) return null;
             return objectMapper.readValue(value, GameState.class);
         } catch (Exception e) {
-            throw new RuntimeException("게임 상태 조회 실패", e);
+            return null;
         }
     }
 

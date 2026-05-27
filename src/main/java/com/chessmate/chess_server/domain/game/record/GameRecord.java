@@ -1,5 +1,7 @@
-package com.chessmate.chess_server.domain.game;
+package com.chessmate.chess_server.domain.game.record;
 
+import com.chessmate.chess_server.domain.game.common.GameType;
+import com.chessmate.chess_server.domain.game.common.ResultReason;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

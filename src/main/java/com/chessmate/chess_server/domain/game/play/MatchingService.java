@@ -1,6 +1,7 @@
-package com.chessmate.chess_server.domain.game;
+package com.chessmate.chess_server.domain.game.play;
 
-import com.chessmate.chess_server.domain.game.dto.MatchResponse;
+import com.chessmate.chess_server.domain.game.common.PlayerColor;
+import com.chessmate.chess_server.domain.game.play.dto.MatchResponse;
 import com.chessmate.chess_server.domain.user.User;
 import com.chessmate.chess_server.domain.user.UserRepository;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -18,13 +19,15 @@ public class MatchingService {
     private final SimpMessagingTemplate messagingTemplate;
     private final UserRepository userRepository;
     private final GameStateService gameStateService;
+    private final TimerService timerService;
 
     public MatchingService(SimpMessagingTemplate messagingTemplate,
                            UserRepository userRepository,
-                           GameStateService gameStateService) {
+                           GameStateService gameStateService, TimerService timerService) {
         this.messagingTemplate = messagingTemplate;
         this.userRepository = userRepository;
         this.gameStateService = gameStateService;
+        this.timerService = timerService;
     }
 
     public void join(String email) {
@@ -52,7 +55,7 @@ public class MatchingService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
 
         String gameId = UUID.randomUUID().toString();
-        GameState gameState = new GameState(gameId, whiteEmail, blackEmail, DEFAULT_TIME_LIMIT);
+        GameState gameState = GameState.create(gameId, whiteEmail, blackEmail, DEFAULT_TIME_LIMIT);
         gameStateService.save(gameState);
 
         messagingTemplate.convertAndSendToUser(
@@ -64,5 +67,7 @@ public class MatchingService {
                 blackEmail, "/queue/match",
                 new MatchResponse(gameId, PlayerColor.BLACK, whiteUser.getNickname(), (int)DEFAULT_TIME_LIMIT)
         );
+
+        timerService.start(gameId);
     }
 }
