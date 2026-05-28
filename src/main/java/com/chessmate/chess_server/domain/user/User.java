@@ -50,4 +50,8 @@ public class User {
         this.password = password;
         this.nickname = nickname;
     }
+
+    public void updateEloRating(int newRating) {
+        this.eloRating = newRating;
+    }
 }

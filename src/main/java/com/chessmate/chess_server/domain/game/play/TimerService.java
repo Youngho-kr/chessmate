@@ -16,13 +16,9 @@ public class TimerService {
     private final Map<String, Long> lastTickMap = new ConcurrentHashMap<>();
 
     private final GameStateService gameStateService;
-    private final GameService gameService;
-    private final SimpMessagingTemplate messagingTemplate;
 
-    public TimerService(GameStateService gameStateService, GameService gameService, SimpMessagingTemplate messagingTemplate) {
+    public TimerService(GameStateService gameStateService) {
         this.gameStateService = gameStateService;
-        this.gameService = gameService;
-        this.messagingTemplate = messagingTemplate;
     }
 
     public void start(String gameId) {
