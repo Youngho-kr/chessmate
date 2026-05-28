@@ -22,6 +22,7 @@ public class GameState {
     private long whiteTimeLeftMs;
     private long blackTimeLeftMs;
     private List<String> moves;
+    private String drawOfferFrom;
 
     public GameState() {
         this.moves = new ArrayList<>();
@@ -36,6 +37,7 @@ public class GameState {
         state.turn = PlayerColor.WHITE;
         state.whiteTimeLeftMs = timeLimit;
         state.blackTimeLeftMs = timeLimit;
+        state.drawOfferFrom = null;
         return state;
     }
 }

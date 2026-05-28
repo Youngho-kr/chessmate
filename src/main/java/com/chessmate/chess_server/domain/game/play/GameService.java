@@ -1,8 +1,12 @@
 package com.chessmate.chess_server.domain.game.play;
 
 import com.chessmate.chess_server.domain.game.common.PlayerColor;
-import com.chessmate.chess_server.domain.game.play.dto.MoveRequest;
-import com.chessmate.chess_server.domain.game.play.dto.MoveResponse;
+import com.chessmate.chess_server.domain.game.common.ResultReason;
+import com.chessmate.chess_server.domain.game.play.dto.*;
+import com.chessmate.chess_server.domain.game.record.GameRecordRepository;
+import com.chessmate.chess_server.domain.game.record.GameRecordService;
+import com.chessmate.chess_server.domain.user.User;
+import com.chessmate.chess_server.domain.user.UserRepository;
 import com.github.bhlangonijr.chesslib.Board;
 import com.github.bhlangonijr.chesslib.move.Move;
 import com.github.bhlangonijr.chesslib.move.MoveList;
@@ -14,11 +18,23 @@ public class GameService {
 
     private final GameStateService gameStateService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final UserRepository userRepository;
+    private final EloService eloService;
+    private final TimerService timerService;
+    private final GameRecordService gameRecordService;
 
     public GameService(GameStateService gameStateService,
-                       SimpMessagingTemplate messagingTemplate) {
+                       SimpMessagingTemplate messagingTemplate,
+                       UserRepository userRepository,
+                       GameRecordRepository gameRecordRepository,
+                       EloService eloService,
+                       TimerService timerService, GameRecordService gameRecordService) {
         this.gameStateService = gameStateService;
         this.messagingTemplate = messagingTemplate;
+        this.userRepository = userRepository;
+        this.eloService = eloService;
+        this.timerService = timerService;
+        this.gameRecordService = gameRecordService;
     }
 
     public void move(String gameId, String email, MoveRequest request) {
@@ -55,8 +71,53 @@ public class GameService {
 
         messagingTemplate.convertAndSend("/topic/game/" + gameId, response);
 
-        if (board.isMated() || board.isStaleMate() || board.isDraw()) {
-            handleGameOver(gameId, gameState, board);
+        if (board.isMated()) {
+            PlayerColor winner = gameState.getTurn();
+            finishGame(gameId, gameState, winner, ResultReason.CHECKMATE);
+        } else if (board.isStaleMate()) {
+            finishGame(gameId, gameState, null, ResultReason.STALEMATE);
+        } else if (board.isDraw()) {
+            finishGame(gameId, gameState, null, ResultReason.FIFTY_MOVE_RULE);
+        }
+    }
+
+    public void resign(String gameId, String email) {
+        GameState gameState = gameStateService.find(gameId);
+        if (gameState == null) throw new IllegalArgumentException("존재하지 않는 게임입니다.");
+
+        PlayerColor winner = email.equals(gameState.getWhiteEmail())
+                ? PlayerColor.BLACK
+                : PlayerColor.WHITE;
+
+        finishGame(gameId, gameState, winner, ResultReason.RESIGNATION);
+    }
+
+    public void draw(String gameId, String email, DrawRequest request) {
+        GameState gameState = gameStateService.find(gameId);
+        if (gameState == null) throw new IllegalArgumentException("존재하지 않는 게임입니다.");
+
+        switch (request.getAction()) {
+            case "OFFER" -> {
+                gameState.setDrawOfferFrom(email);
+                gameStateService.update(gameState);
+
+                PlayerColor offerColor = email.equals(gameState.getWhiteEmail())
+                        ? PlayerColor.WHITE : PlayerColor.BLACK;
+
+                messagingTemplate.convertAndSend("/topic/game/" + gameId,
+                        new DrawOfferResponse(offerColor));
+            }
+            case "ACCEPT" -> {
+                gameState.setDrawOfferFrom(null);
+                gameStateService.update(gameState);
+                finishGame(gameId, gameState, null, ResultReason.DRAW_BY_AGREEMENT);
+            }
+            case "DECLINE" -> {
+                gameState.setDrawOfferFrom(null);
+                gameStateService.update(gameState);
+                messagingTemplate.convertAndSend("/topic/game/" + gameId,
+                        new DrawDeclineResponse());
+            }
         }
     }
 
@@ -70,6 +131,38 @@ public class GameService {
         messagingTemplate.convertAndSendToUser(
                 email, "/queue/game/" + gameId, gameState
         );
+    }
+
+    public void finishGame(String gameId, GameState gameState,
+                           PlayerColor winner, ResultReason resultReason) {
+        timerService.stop(gameId);
+
+        User whiteUser = userRepository.findByEmail(gameState.getWhiteEmail())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        User blackUser = userRepository.findByEmail(gameState.getBlackEmail())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+
+        double whiteScore = winner == null ? 0.5 : (winner == PlayerColor.WHITE ? 1.0 : 0.0);
+        double blackScore = 1.0 - whiteScore;
+
+        int whiteChange = eloService.calculateChange(
+                whiteUser.getEloRating(), blackUser.getEloRating(), whiteScore);
+        int blackChange = eloService.calculateChange(
+                blackUser.getEloRating(), whiteUser.getEloRating(), blackScore);
+
+        whiteUser.updateEloRating(whiteUser.getEloRating() + whiteChange);
+        blackUser.updateEloRating(blackUser.getEloRating() + blackChange);
+
+        String pgn = String.join(" ", gameState.getMoves());
+        gameRecordService.save(pgn, resultReason, whiteUser, blackUser, whiteChange, blackChange);
+
+        gameStateService.delete(gameId);
+
+        String result = winner == null ? "DRAW"
+                : (winner == PlayerColor.WHITE ? "WHITE_WIN" : "BLACK_WIN");
+
+        messagingTemplate.convertAndSend("/topic/game/" + gameId,
+                new GameOverResponse(result, resultReason.name(), whiteChange, blackChange));
     }
 
     private void validateTurn(GameState gameState, String email) {
@@ -97,9 +190,5 @@ public class GameService {
         gameState.setTurn(
                 gameState.getTurn() == PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE
         );
-    }
-
-    private void handleGameOver(String gameId, GameState gameState, Board board) {
-        gameStateService.delete(gameId);
     }
 }
