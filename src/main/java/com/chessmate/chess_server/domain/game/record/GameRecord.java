@@ -1,6 +1,7 @@
 package com.chessmate.chess_server.domain.game.record;
 
 import com.chessmate.chess_server.domain.game.common.GameType;
+import com.chessmate.chess_server.domain.game.common.PlayerColor;
 import com.chessmate.chess_server.domain.game.common.ResultReason;
 import com.chessmate.chess_server.domain.user.User;
 import jakarta.persistence.*;
@@ -41,6 +42,10 @@ public class GameRecord {
     private String externalId;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PlayerColor winner;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = true)
     private ResultReason resultReason;
 
@@ -54,11 +59,13 @@ public class GameRecord {
 
     public GameRecord(String pgn, GameType gameType,
                       User whitePlayer, User blackPlayer,
+                      PlayerColor winner,
                       ResultReason resultReason) {
         this.pgn = pgn;
         this.gameType = gameType;
         this.whitePlayer = whitePlayer;
         this.blackPlayer = blackPlayer;
+        this.winner = winner;
         this.resultReason = resultReason;
     }
 
@@ -68,5 +75,8 @@ public class GameRecord {
         this.gameType = gameType;
         this.source = source;
         this.externalId = externalId;
+
+        // pgn 파싱해서 winner 설정.
+        // this.winner = ?
     }
 }
