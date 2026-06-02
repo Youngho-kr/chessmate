@@ -26,7 +26,6 @@ public class GameService {
     public GameService(GameStateService gameStateService,
                        SimpMessagingTemplate messagingTemplate,
                        UserRepository userRepository,
-                       GameRecordRepository gameRecordRepository,
                        EloService eloService,
                        TimerService timerService, GameRecordService gameRecordService) {
         this.gameStateService = gameStateService;
