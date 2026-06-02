@@ -7,33 +7,47 @@
 <body>
 <h1>ChessMate</h1>
 
-<div id="authButtons"></div>
+<form id="loginForm">
+    <div>
+        <label>이메일</label>
+        <input type="email" id="email" required>
+    </div>
+    <div>
+        <label>비밀번호</label>
+        <input type="password" id="password" required>
+    </div>
+    <button type="submit">로그인</button>
+</form>
 
+<p id="message"></p>
+<a href="/signup.html">회원가입</a>
+
+<script src="/auth.js"></script>
 <script>
     const accessToken = localStorage.getItem('accessToken');
-    const authButtons = document.getElementById('authButtons');
+    if (accessToken) window.location.href = "/main.html";
 
-    if (accessToken) {
-        authButtons.innerHTML = `
-                <a href="/profile.html">프로필</a>
-                <button onclick="logout()">로그아웃</button>
-            `;
-    } else {
-        authButtons.innerHTML = `
-                <a href="/signup.html">회원가입</a>
-                <a href="/login.html">로그인</a>
-            `;
-    }
+    document.getElementById('loginForm').addEventListener('submit', async(e) => {
+       e.preventDefault();
 
-    async function logout() {
-        await fetch('/api/auth/logout', {
-            method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + accessToken }
-        });
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        window.location.reload();
-    }
+       const response = await fetch('/api/auth/login', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({
+               email: document.getElementById('email').value,
+               password: document.getElementById('password').value
+           })
+       });
+
+       if (response.ok) {
+           const data = await response.json();
+           localStorage.setItem('accessToken', data.accessToken);
+           localStorage.setItem('refreshToken', data.refreshToken);
+           window.location.href = 'main.html';
+       } else {
+           document.getElementById('message').textContent = '이메일 또는 비밀번호가 올바르지 않습니다.'
+       }
+    });
 </script>
 </body>
 </html>
