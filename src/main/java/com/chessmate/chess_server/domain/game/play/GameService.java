@@ -154,7 +154,7 @@ public class GameService {
         blackUser.updateEloRating(blackUser.getEloRating() + blackChange);
 
         String pgn = String.join(" ", gameState.getMoves());
-        gameRecordService.save(pgn, resultReason, whiteUser, blackUser, whiteChange, blackChange);
+        gameRecordService.save(pgn, resultReason, whiteUser, blackUser, winner, whiteChange, blackChange);
 
         gameStateService.delete(gameId);
 
