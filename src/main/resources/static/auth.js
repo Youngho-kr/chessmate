@@ -33,3 +33,10 @@ async function authFetch(url, options = {}) {
 
     return response;
 }
+
+async function logout() {
+    await authFetch('/api/auth/logout', { method: 'POST' })
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    window.location.href = '/';
+}
