@@ -70,7 +70,8 @@
             client.subscribe('/user/queue/match', (msg) => {
               const data = JSON.parse(msg.body);
               sessionStorage.setItem('gameId', data.gameId);
-              sessionStorage.setItem('color', data.color);
+              sessionStorage.setItem('color', data.playerColor);
+
               window.location.href = '/play.html';
             })
           }

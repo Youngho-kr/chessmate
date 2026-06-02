@@ -8,8 +8,8 @@ import com.chessmate.chess_server.domain.game.record.GameRecordService;
 import com.chessmate.chess_server.domain.user.User;
 import com.chessmate.chess_server.domain.user.UserRepository;
 import com.github.bhlangonijr.chesslib.Board;
+import com.github.bhlangonijr.chesslib.Square;
 import com.github.bhlangonijr.chesslib.move.Move;
-import com.github.bhlangonijr.chesslib.move.MoveList;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -49,7 +49,7 @@ public class GameService {
         Board board = new Board();
         board.loadFromFen(gameState.getFen());
 
-        Move move = parseMove(board, request.getSan());
+        Move move = parseMove(board, request.getFrom(), request.getTo());
 
         if (move == null || !board.legalMoves().contains(move)) {
             throw new IllegalArgumentException("유효하지 않은 수입니다.");
@@ -58,11 +58,11 @@ public class GameService {
         board.doMove(move);
         String newFen = board.getFen();
 
-        updateGameState(gameState, request.getSan(), newFen);
+        updateGameState(gameState, move.toString(), newFen);
         gameStateService.update(gameState);
 
         MoveResponse response = new MoveResponse(
-                request.getSan(),
+                move.toString(),
                 newFen,
                 gameState.getTurn(),
                 gameState.getWhiteTimeLeftMs(),
@@ -72,7 +72,9 @@ public class GameService {
         messagingTemplate.convertAndSend("/topic/game/" + gameId, response);
 
         if (board.isMated()) {
-            PlayerColor winner = gameState.getTurn();
+            PlayerColor winner = gameState.getTurn() == PlayerColor.WHITE
+                    ? PlayerColor.BLACK
+                    : PlayerColor.WHITE;
             finishGame(gameId, gameState, winner, ResultReason.CHECKMATE);
         } else if (board.isStaleMate()) {
             finishGame(gameId, gameState, null, ResultReason.STALEMATE);
@@ -174,11 +176,13 @@ public class GameService {
         }
     }
 
-    private Move parseMove(Board board, String san) {
+    private Move parseMove(Board board, String from, String to) {
         try {
-            MoveList moveList = new MoveList();
-            moveList.loadFromSan(san);
-            return moveList.isEmpty() ? null : moveList.get(0);
+            Move move = new Move(
+                    Square.fromValue(from.toUpperCase()),
+                    Square.fromValue(to.toUpperCase())
+            );
+            return board.legalMoves().contains(move) ? move : null;
         } catch (Exception e) {
             return null;
         }

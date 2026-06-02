@@ -2,9 +2,207 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>ChessMate</title>
+    <title>ChessMate - 대전</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs/bundles/stomp.umd.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <style>
+        #board { width: 480px; }
+        #gameInfo { margin: 20px 0; }
+        #opponentTimer, #myTimer { font-size: 24px; font-weight: bold; }
+        #resultPopup {
+            display: none;
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border: 2px solid black;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
-    플레이 화면
+    <div id="opponentInfo">
+        <span id="opponentName"></span>
+        <span id="opponentTimer"></span>
+    </div>
+
+    <div id="board"></div>
+
+    <div id="myInfo">
+        <span id="myName"></span>
+        <span id="myTimer"></span>
+    </div>
+
+    <div id="gameInfo">
+        <button onclick="resign()">기권</button>
+        <button onclick="drawOffer()">무승부 제안</button>
+        <div id="drawOfferSection" style="display:none">
+            <p>상대방이 무승부를 제안했습니다.</p>
+            <button onclick="drawAccept()">수락</button>
+            <button onclick="drawDecline()">거절</button>
+        </div>
+    </div>
+
+    <div id="resultPopup">
+        <h2 id="resultTitle"></h2>
+        <p id="resultDetail"></p>
+        <button onclick="window.location.href='main.html'">메인으로</button>
+    </div>
+
+    <script src="/auth.js"></script>
+    <script>
+        const accessToken = localStorage.getItem('accessToken');
+        if (!accessToken) window.location.href = '/';
+
+        const gameId = sessionStorage.getItem('gameId');
+        const myColor = sessionStorage.getItem('color');
+        if (!gameId || !myColor) window.location.href = '/main.html';
+
+        let client;
+        let chess = new Chess();
+        let board;
+        let myTimeLeft;
+        let opponentTimeLeft;
+        let timerInterval;
+
+        function initBoard() {
+            board = ChessBoard('board', {
+                position: 'start',
+                draggable: true,
+                orientation: myColor == 'WHITE' ? 'white' : 'black',
+                onDrop: onDrop,
+                pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
+            });
+        }
+
+        function onDrop(source, target) {
+            const move = chess.move({
+                from: source,
+                to: target,
+                promotion: 'q'
+            });
+
+            if (move == null) return 'snapback';
+
+            const san = move.san;
+            chess.undo();
+
+            client.publish({
+                destination: '/app/game/' + gameId + '/move',
+                body: JSON.stringify({ from: source, to: target })
+            });
+        }
+
+        function connectWebSocket() {
+            client = new StompJs.Client({
+                webSocketFactory: () => new SockJS('/ws-chess'),
+                connectHeaders: { Authorization: 'Bearer ' + accessToken },
+                onConnect: () => {
+                    client.subscribe('/topic/game/' + gameId, (msg) => {
+                        const data = JSON.parse(msg.body);
+
+                        if (data.type === 'MOVE') {
+                            const from = data.san.substring(0, 2);
+                            const to = data.san.substring(2, 4);
+                            chess.move({ from: from, to: to, prmotion: 'q' });
+                            board.position(chess.fen());
+                            updateTimers(data.whiteTimerLeftMs, data.blackTimerLeftMs);
+                        } else if (data.type === 'GAME_OVER') {
+                            showResult(data);
+                        } else if (data.type === 'DRAW_OFFER') {
+                            if (data.from !== myColor) {
+                                document.getElementById('drawOfferSection').style.display = 'block';
+                            }
+                        } else if (data.type === 'DRAW_DECLINE') {
+                            document.getElementById('drawOfferSection').stype.display = 'none';
+                        }
+                    });
+                }
+            });
+            client.activate();
+        }
+
+        function updateTimers(whiteTimeLeftMs, blackTimeLeftMs) {
+            if (myColor === 'WHITE') {
+                myTimeLeft = whiteTimeLeftMs;
+                opponentTimeLeft = blackTimeLeftMs;
+            } else {
+                myTimeLeft = blackTimeLeftMs;
+                opponentTimeLeft = whiteTimeLeftMs;
+            }
+            renderTimers();
+        }
+
+        function renderTimers() {
+            document.getElementById('myTimer').textContent = formatTime(myTimeLeft);
+            document.getElementById('opponentTimer').textContent = formatTime(opponentTimeLeft);
+        }
+
+        function formatTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function showResult(data) {
+            const popup = document.getElementById('resultPopup');
+            const title = document.getElementById('resultTitle');
+            const detail = document.getElementById('resultDetail');
+
+            if (data.result === 'DRAW') {
+                title.textContent = '무승부';
+            } else if (data.result === myColor + '_WIN') {
+                title.textContent = '승리';
+            } else {
+                title.textContent = '패배';
+            }
+
+            const ratingChange = myColor === 'WHITE'
+                ? data.whiteRatingChange : data.blackRatingChange;
+            detail.textContent = `레이팅 변동: ${ratingChange > 0 ? '+' : ''}${ratingChange}`;
+
+            popup.style.display = 'block';
+        }
+
+        function resign() {
+            if (confirm('정말 기권하시겠습니까?')) {
+                client.publish({ destination: '/app/game/' + gameId + '/resign' });
+            }
+        }
+
+        function drawOffer() {
+            client.publish({
+                destination: '/app/game/' + gameId + '/draw',
+                body: JSON.stringify({ action: 'OFFER' })
+            });
+        }
+
+        function drawAccept() {
+            client.publish({
+                destination: '/app/game/' + gameId + '/draw',
+                body: JSON.stringify({ action: 'ACCEPT' })
+            });
+            document.getElementById('drawOfferSection').style.display = 'none';
+        }
+
+        function drawDecline() {
+            client.publish({
+                destination: '/app/game/' + gameId + '/draw',
+                body: JSON.stringify({ action: 'DECLINE' })
+            });
+            document.getElementById('drawOfferSection').style.display = 'none';
+        }
+
+        window.onload = () => {
+            initBoard();
+            connectWebSocket();
+        }
+    </script>
 </body>
 </html>
