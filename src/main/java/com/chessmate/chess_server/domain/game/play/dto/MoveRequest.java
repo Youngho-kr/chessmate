@@ -6,5 +6,6 @@ import lombok.Setter;
 @Getter @Setter
 public class MoveRequest {
 
-    private String san;
+    private String from;
+    private String to;
 }
