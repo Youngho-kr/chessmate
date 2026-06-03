@@ -37,4 +37,10 @@ out/
 .vscode/
 
 ### MacOS ###
-.DS_Store
+**/.DS_Store
+
+### Local Environment ###
+application-local.yml
+
+# H2 file database
+data/
