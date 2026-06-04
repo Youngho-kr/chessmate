@@ -61,6 +61,7 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             cd /home/ubuntu/chess-server
+            docker compose down
+            docker rmi chess-sever || true
             docker build -t chess server .
-            docker compose down || true
             docker compose up -d
