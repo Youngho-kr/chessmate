@@ -41,6 +41,7 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_KEY }}
           script: |
+            mkdir -p /home/ubuntu/chess-server
             echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" > /home/ubuntu/chess-server/.env
 
       - name: Deploy on EC2
