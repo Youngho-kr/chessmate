@@ -1,8 +1,8 @@
-FROM openjdk:21-jdk-slim
+FROM eclipse-temurin:25-jdk-jammy
 
 WORKDIR /app
 
-COPY build/libs/*.jar app.jar
+COPY *.jar app.jar
 
 EXPOSE 8080
 
