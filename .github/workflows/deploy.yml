@@ -41,7 +41,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_KEY }}
-          source: "docker-compose.yml,Dockerfile"
+          source: "docker-compose.yml,Dockerfile,nginx"
           target: "/home/ubuntu/chess-server"
 
       - name: Create .env file
