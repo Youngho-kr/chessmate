@@ -21,3 +21,5 @@ jwt:
   secret: # 32자 이상 임의의 문자열
   access-expiration: 1800000      # 30분 (ms)
   refresh-expiration: 604800000   # 7일 (ms)
+stockfish:
+    path: /path/to/stockfish
