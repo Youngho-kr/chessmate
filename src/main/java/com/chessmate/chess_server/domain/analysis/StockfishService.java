@@ -61,7 +61,7 @@ public class StockfishService {
             writer.println("quit");
             return new StockfishResult(score, bestMove);
         } catch (Exception e) {
-            throw new RuntimeException("Stockfish 실행 실패");
+            throw new RuntimeException("Stockfish 실행 실패: " + e.getMessage(), e);
         } finally {
             if (process != null) process.destroy();
         }
