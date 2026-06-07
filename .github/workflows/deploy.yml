@@ -62,6 +62,6 @@ jobs:
           script: |
             cd /home/ubuntu/chess-server
             docker compose down
-            docker rmi chess-sever || true
-            docker build -t chess server .
+            docker rmi chess-server || true
+            docker build -t chess-server .
             docker compose up -d
