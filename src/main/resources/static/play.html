@@ -70,6 +70,14 @@
         let opponentTimeLeft;
         let timerInterval;
 
+        const isComputerGame = sessionStorage.getItem('isComputerGame') === 'true';
+
+        if (isComputerGame) {
+            document.getElementById('myTimer').style.display = 'none';
+            document.getElementById('opponentTimer').style.display = 'none';
+            document.getElementById('drawOfferSection').style.display = 'none';
+        }
+
         function initBoard() {
             board = ChessBoard('board', {
                 position: 'start',
@@ -122,8 +130,12 @@
                             }
                         } else if (data.type === 'DRAW_DECLINE') {
                             document.getElementById('drawOfferSection').style.display = 'none';
+                        } else if (data.type == "GAME_START") {
+                            // 게임 시작
                         }
                     });
+
+                    client.publish({ destination: '/app/game/' + gameId + '/ready' })
                 }
             });
             client.activate();

@@ -1,5 +1,7 @@
 package com.chessmate.chess_server.domain.game.play;
 
+import com.chessmate.chess_server.domain.analysis.StockfishResult;
+import com.chessmate.chess_server.domain.analysis.StockfishService;
 import com.chessmate.chess_server.domain.game.common.PlayerColor;
 import com.chessmate.chess_server.domain.game.common.ResultReason;
 import com.chessmate.chess_server.domain.game.play.dto.*;
@@ -13,6 +15,8 @@ import com.github.bhlangonijr.chesslib.move.Move;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 public class GameService {
 
@@ -22,18 +26,20 @@ public class GameService {
     private final EloService eloService;
     private final TimerService timerService;
     private final GameRecordService gameRecordService;
+    private final StockfishService stockfishService;
 
     public GameService(GameStateService gameStateService,
                        SimpMessagingTemplate messagingTemplate,
                        UserRepository userRepository,
                        EloService eloService,
-                       TimerService timerService, GameRecordService gameRecordService) {
+                       TimerService timerService, GameRecordService gameRecordService, StockfishService stockfishService) {
         this.gameStateService = gameStateService;
         this.messagingTemplate = messagingTemplate;
         this.userRepository = userRepository;
         this.eloService = eloService;
         this.timerService = timerService;
         this.gameRecordService = gameRecordService;
+        this.stockfishService = stockfishService;
     }
 
     public void move(String gameId, String email, MoveRequest request) {
@@ -79,6 +85,10 @@ public class GameService {
             finishGame(gameId, gameState, null, ResultReason.STALEMATE);
         } else if (board.isDraw()) {
             finishGame(gameId, gameState, null, ResultReason.FIFTY_MOVE_RULE);
+        }
+
+        if (gameState.isComputerGame() && !board.isMated() && !board.isStaleMate()) {
+            makeComputerMove(gameId, gameState);
         }
     }
 
@@ -138,24 +148,31 @@ public class GameService {
                            PlayerColor winner, ResultReason resultReason) {
         timerService.stop(gameId);
 
-        User whiteUser = userRepository.findByEmail(gameState.getWhiteEmail())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
-        User blackUser = userRepository.findByEmail(gameState.getBlackEmail())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        User whiteUser = gameState.isComputerGame() && gameState.getComputerColor() == PlayerColor.WHITE ? null
+                : userRepository.findByEmail(gameState.getWhiteEmail())
+                  .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        User blackUser = gameState.isComputerGame() && gameState.getComputerColor() == PlayerColor.BLACK ? null
+                : userRepository.findByEmail(gameState.getBlackEmail())
+                  .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
 
-        double whiteScore = winner == null ? 0.5 : (winner == PlayerColor.WHITE ? 1.0 : 0.0);
-        double blackScore = 1.0 - whiteScore;
+        int whiteChange = 0;
+        int blackChange = 0;
 
-        int whiteChange = eloService.calculateChange(
-                whiteUser.getEloRating(), blackUser.getEloRating(), whiteScore);
-        int blackChange = eloService.calculateChange(
-                blackUser.getEloRating(), whiteUser.getEloRating(), blackScore);
+        if (!gameState.isComputerGame()) {
+            double whiteScore = winner == null ? 0.5 : (winner == PlayerColor.WHITE ? 1.0 : 0.0);
+            double blackScore = 1.0 - whiteScore;
 
-        whiteUser.updateEloRating(whiteUser.getEloRating() + whiteChange);
-        blackUser.updateEloRating(blackUser.getEloRating() + blackChange);
+            whiteChange = eloService.calculateChange(
+                    whiteUser.getEloRating(), blackUser.getEloRating(), whiteScore);
+            blackChange = eloService.calculateChange(
+                    blackUser.getEloRating(), whiteUser.getEloRating(), blackScore);
+
+            whiteUser.updateEloRating(whiteUser.getEloRating() + whiteChange);
+            blackUser.updateEloRating(blackUser.getEloRating() + blackChange);
+        }
 
         String pgn = String.join(" ", gameState.getMoves());
-        gameRecordService.save(pgn, resultReason, whiteUser, blackUser, winner, whiteChange, blackChange);
+        gameRecordService.save(pgn, resultReason, whiteUser, blackUser, winner);
 
         gameStateService.delete(gameId);
 
@@ -164,6 +181,76 @@ public class GameService {
 
         messagingTemplate.convertAndSend("/topic/game/" + gameId,
                 new GameOverResponse(result, resultReason.name(), whiteChange, blackChange));
+    }
+
+    public ComputerGameResponse startComputerGame(String email, int skillLevel) {
+        String gameId = UUID.randomUUID().toString();
+
+        // 랜덤으로 유저 색상 결정
+        // TODO : 유저가 색상 선택 또는 랜덤 색상할 지 선택 가능하게 수정
+        PlayerColor userColor = Math.random() < 0.5 ? PlayerColor.WHITE : PlayerColor.BLACK;
+        PlayerColor computerColor = userColor == PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
+
+        String whitEmail = userColor == PlayerColor.WHITE ? email : "stockfish " + skillLevel;
+        String blackEmail = userColor == PlayerColor.BLACK ? email : "stockfish " + skillLevel;
+
+        GameState gameState = GameState.createComputerGame(gameId, whitEmail, blackEmail, skillLevel, computerColor);
+        gameStateService.save(gameState);
+
+        return new ComputerGameResponse(gameId, userColor);
+    }
+
+    public void makeComputerMove(String gameId, GameState gameState) {
+        System.out.println("makeComputerMove 호출 - fen: " + gameState.getFen());
+        StockfishResult result = stockfishService.evaluate(
+                gameState.getFen(), gameState.getSkillLevel());
+        System.out.println("bestMove: " + result.getBestMove());
+
+        if (result.getBestMove() == null) return;
+
+        String from = result.getBestMove().substring(0, 2);
+        String to = result.getBestMove().substring(2, 4);
+
+        Board board = new Board();
+        board.loadFromFen(gameState.getFen());
+        Move move = parseMove(board, from, to);
+
+        board.doMove(move);
+        updateGameState(gameState, move.toString(), board.getFen());
+        gameStateService.update(gameState);
+
+        messagingTemplate.convertAndSend("/topic/game/" + gameId,
+                new MoveResponse(move.toString(), board.getFen(),
+                        gameState.getTurn(),
+                        gameState.getWhiteTimeLeftMs(),
+                        gameState.getBlackTimeLeftMs()));
+    }
+
+    public void ready(String gameId) {
+        GameState gameState = gameStateService.find(gameId);
+        if (gameState == null) return;
+        System.out.println("ready 호출 전 readyCount: " + gameState.getReadyCount());
+        gameState.setReadyCount(gameState.getReadyCount() + 1);
+        gameStateService.update(gameState);
+        System.out.println("ready 호출 후 readyCount: " + gameState.getReadyCount());
+
+        int requiredCount = gameState.isComputerGame() ? 1 : 2;
+        System.out.println("requiredCount: " + requiredCount);
+        gameState.setReadyCount(gameState.getReadyCount() + 1);
+        gameStateService.update(gameState);
+
+        if (gameState.getReadyCount() >= requiredCount) {
+            if (!gameState.isComputerGame()) {
+                timerService.start(gameId);
+            }
+
+            messagingTemplate.convertAndSend("/topic/game/" + gameId,
+                    new GameStartResponse(gameState.getTurn()));
+
+            if (gameState.isComputerGame() && gameState.getComputerColor() == PlayerColor.WHITE) {
+                makeComputerMove(gameId, gameState);
+            }
+        }
     }
 
     private void validateTurn(GameState gameState, String email) {

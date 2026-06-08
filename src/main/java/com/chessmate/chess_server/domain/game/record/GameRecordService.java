@@ -23,11 +23,7 @@ public class GameRecordService {
     @Transactional
     public void save (String pgn, ResultReason resultReason,
                       User whiteUser, User blackUser,
-                      PlayerColor winner,
-                      int whiteChange, int blackChange) {
-        whiteUser.updateEloRating(whiteUser.getEloRating() + whiteChange);
-        blackUser.updateEloRating(blackUser.getEloRating() + blackChange);
-
+                      PlayerColor winner) {
         GameRecord gameRecord = new GameRecord(
                 pgn, GameType.PLATFORM, whiteUser, blackUser, winner, resultReason);
         gameRecordRepository.save(gameRecord);

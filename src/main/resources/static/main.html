@@ -25,6 +25,18 @@
       <button id="loadMore" onclick="loadMore()">더 보기</button>
     </div>
 
+    <div id="computerSection">
+        <h3>컴퓨터와 대전</h3>
+        <select id="skillLevel">
+            <option value="20">최강</option>
+            <option value="15">어려움</option>
+            <option value="10" selected>보통</option>
+            <option value="5">쉬움</option>
+            <option value="0">매우 쉬움</option>
+        </select>
+        <button onclick="startComputerGame()">컴퓨터와 대전 시작</button>
+    </div>
+
     <script src="/auth.js"></script>
     <script>
       let client;
@@ -92,6 +104,22 @@
           document.getElementById('matchBtn').textContent = '매치 시작';
           document.getElementById('matchStatus').textContent = '';
         }
+      }
+
+      function startComputerGame() {
+          const skillLevel = parseInt(document.getElementById('skillLevel').value);
+          client.subscribe('/user/queue/computer', (msg) => {
+              const data = JSON.parse(msg.body);
+              sessionStorage.setItem('gameId', data.gameId);
+              sessionStorage.setItem('color', data.playerColor);
+              sessionStorage.setItem('timeLimit', '0');
+              sessionStorage.setItem('isComputerGame', 'true');
+              window.location.href = '/play.html';
+          });
+          client.publish({
+              destination: '/app/game/computer/start',
+              body: JSON.stringify({ skillLevel: skillLevel })
+          });
       }
 
       window.onload = init;

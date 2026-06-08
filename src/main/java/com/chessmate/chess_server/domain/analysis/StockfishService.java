@@ -8,6 +8,8 @@ import java.io.*;
 @Service
 public class StockfishService {
 
+    private static final int MAX_SKILL_LEVEL = 20;
+
     private final StockfishConfig stockfishConfig;
 
     public StockfishService(StockfishConfig stockfishConfig) {
@@ -15,6 +17,10 @@ public class StockfishService {
     }
 
     public StockfishResult evaluate(String fen) {
+        return evaluate(fen, MAX_SKILL_LEVEL);
+    }
+
+    public StockfishResult evaluate(String fen, int skillLevel) {
         Process process = null;
 
         try {
@@ -32,6 +38,11 @@ public class StockfishService {
             writer.println("uci");
             while ((line = reader.readLine()) != null) {
                 if (line.contains("uciok")) break;
+            }
+
+            // skillLevel이 20 미만일 때만 설정
+            if (skillLevel < 20) {
+                writer.println("setoption name skill Level value " + skillLevel);
             }
 
             writer.println("isready");
