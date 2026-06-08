@@ -23,6 +23,10 @@ public class GameState {
     private long blackTimeLeftMs;
     private List<String> moves;
     private String drawOfferFrom;
+    private boolean computerGame;
+    private PlayerColor computerColor;
+    private int skillLevel;
+    private int readyCount;
 
     public GameState() {
         this.moves = new ArrayList<>();
@@ -38,6 +42,18 @@ public class GameState {
         state.whiteTimeLeftMs = timeLimit;
         state.blackTimeLeftMs = timeLimit;
         state.drawOfferFrom = null;
+        state.computerGame = false;
+        state.readyCount = 0;
+        return state;
+    }
+
+    public static GameState createComputerGame(
+            String gameId, String whiteEmail, String blackEmail, int skillLevel, PlayerColor computerColor) {
+        GameState state = GameState.create(gameId, whiteEmail, blackEmail, skillLevel);
+        state.computerGame = true;
+        state.computerColor = computerColor;
+        state.skillLevel = skillLevel;
+
         return state;
     }
 }

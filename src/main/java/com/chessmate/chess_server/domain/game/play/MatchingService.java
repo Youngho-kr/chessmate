@@ -67,7 +67,5 @@ public class MatchingService {
                 blackEmail, "/queue/match",
                 new MatchResponse(gameId, PlayerColor.BLACK, whiteUser.getNickname(), (int)DEFAULT_TIME_LIMIT)
         );
-
-        timerService.start(gameId);
     }
 }
