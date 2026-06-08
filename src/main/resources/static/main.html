@@ -49,8 +49,8 @@
           const li = document.createElement('li');
           li.innerHTML = `
             ${game.whitePlayer} vs ${game.blackPlayer}
-            - ${game.result} (${game.resultReason})
-            <a href="/game.html?id=${game.gameId}">자세히</a>
+            - ${game.result} (${game.resultReason}): gameId - ${game.gameId}
+            <a href="/analysis.html?id=${game.gameId}">자세히</a>
           `;
           list.appendChild(li);
         });
