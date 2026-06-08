@@ -208,9 +208,8 @@
         document.getElementById('whitePlayer').textContent = gameData.whitePlayer + ' (백)';
         document.getElementById('blackPlayer').textContent = gameData.blackPlayer + ' (흑)';
 
-        await authFetch(`api/analysis/${gameId}`, { method: 'POST' });
+        const analysisData = await authFetch(`api/analysis/${gameId}`, { method: 'POST' }).then(r => r.json());
 
-        const analysisData = await authFetch(`/api/analysis/${gameId}`).then(r => r.json());
         nodes = analysisData.tree;
 
         document.getElementById('whiteAcc').textContent = '백 ' + analysisData.whiteAccuracy + '%';

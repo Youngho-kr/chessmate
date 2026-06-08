@@ -5,7 +5,6 @@ import com.chessmate.chess_server.domain.analysis.StockfishService;
 import com.chessmate.chess_server.domain.game.common.PlayerColor;
 import com.chessmate.chess_server.domain.game.common.ResultReason;
 import com.chessmate.chess_server.domain.game.play.dto.*;
-import com.chessmate.chess_server.domain.game.record.GameRecordRepository;
 import com.chessmate.chess_server.domain.game.record.GameRecordService;
 import com.chessmate.chess_server.domain.user.User;
 import com.chessmate.chess_server.domain.user.UserRepository;
@@ -32,7 +31,9 @@ public class GameService {
                        SimpMessagingTemplate messagingTemplate,
                        UserRepository userRepository,
                        EloService eloService,
-                       TimerService timerService, GameRecordService gameRecordService, StockfishService stockfishService) {
+                       TimerService timerService,
+                       GameRecordService gameRecordService,
+                       StockfishService stockfishService) {
         this.gameStateService = gameStateService;
         this.messagingTemplate = messagingTemplate;
         this.userRepository = userRepository;
@@ -201,10 +202,8 @@ public class GameService {
     }
 
     public void makeComputerMove(String gameId, GameState gameState) {
-        System.out.println("makeComputerMove 호출 - fen: " + gameState.getFen());
         StockfishResult result = stockfishService.evaluate(
                 gameState.getFen(), gameState.getSkillLevel());
-        System.out.println("bestMove: " + result.getBestMove());
 
         if (result.getBestMove() == null) return;
 
@@ -229,13 +228,10 @@ public class GameService {
     public void ready(String gameId) {
         GameState gameState = gameStateService.find(gameId);
         if (gameState == null) return;
-        System.out.println("ready 호출 전 readyCount: " + gameState.getReadyCount());
         gameState.setReadyCount(gameState.getReadyCount() + 1);
         gameStateService.update(gameState);
-        System.out.println("ready 호출 후 readyCount: " + gameState.getReadyCount());
 
         int requiredCount = gameState.isComputerGame() ? 1 : 2;
-        System.out.println("requiredCount: " + requiredCount);
         gameState.setReadyCount(gameState.getReadyCount() + 1);
         gameStateService.update(gameState);
 

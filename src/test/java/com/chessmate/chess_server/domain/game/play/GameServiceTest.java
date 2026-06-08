@@ -1,5 +1,6 @@
 package com.chessmate.chess_server.domain.game.play;
 
+import com.chessmate.chess_server.domain.analysis.StockfishService;
 import com.chessmate.chess_server.domain.game.common.PlayerColor;
 import com.chessmate.chess_server.domain.game.common.ResultReason;
 import com.chessmate.chess_server.domain.game.play.dto.MoveRequest;
@@ -30,6 +31,7 @@ class GameServiceTest {
     private EloService eloService;
     private TimerService timerService;
     private GameRecordService gameRecordService;
+    private StockfishService stockfishService;
 
     @BeforeEach
     void beforeEach() {
@@ -39,9 +41,10 @@ class GameServiceTest {
         eloService = new EloService();
         timerService = mock(TimerService.class);
         gameRecordService = mock(GameRecordService.class);
+        stockfishService = mock(StockfishService.class);
 
         gameService = new GameService(gameStateService, messagingTemplate, userRepository,
-                 eloService, timerService, gameRecordService);
+                 eloService, timerService, gameRecordService, stockfishService);
     }
 
     @Test
@@ -109,7 +112,7 @@ class GameServiceTest {
         when(userRepository.findByEmail(WHITE_EMAIL)).thenReturn(Optional.of(whiteUser));
         when(userRepository.findByEmail(BLACK_EMAIL)).thenReturn(Optional.of(blackUser));
         doNothing().when(gameRecordService).save(
-                any(), any(), any(), any(), any(), anyInt(), anyInt()
+                any(), any(), any(), any(), any()
         );
 
         gameService.finishGame(TEST_GAME_ID, gameState, PlayerColor.WHITE, ResultReason.RESIGNATION);
