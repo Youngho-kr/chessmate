@@ -117,7 +117,7 @@
                         } else if (data.type === 'GAME_OVER') {
                             showResult(data);
                         } else if (data.type === 'DRAW_OFFER') {
-                            if (data.from !== myColor) {
+                            if (data.offerPlayer !== myColor) {
                                 document.getElementById('drawOfferSection').style.display = 'block';
                             }
                         } else if (data.type === 'DRAW_DECLINE') {
