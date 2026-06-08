@@ -14,6 +14,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class AnalysisService {
@@ -43,9 +44,10 @@ public class AnalysisService {
     }
 
     @Transactional
-    public void analyze(Long gameRecordId, Long userId) {
-        if (analysisRepository.existsByGameRecordIdAndUserId(gameRecordId, userId)) {
-            throw new IllegalArgumentException("이미 분석된 게임입니다.");
+    public Analysis analyze(Long gameRecordId, Long userId) {
+        Optional<Analysis> existing = analysisRepository.findByGameRecordIdAndUserId(gameRecordId, userId);
+        if (existing.isPresent()) {
+            return existing.get();
         }
 
         GameRecord gameRecord = gameRecordRepository.findById(gameRecordId)
@@ -74,6 +76,12 @@ public class AnalysisService {
             String fen = board.getFen();
             StockfishResult result = stockfishService.evaluate(fen);
 
+            // White 기준으로 평가치 정규화
+            boolean isNowBlackTurn = (i % 2 == 0);
+            int normalizedScore = isNowBlackTurn
+                    ? -result.getEvalScore()
+                    :  result.getEvalScore();
+
             PlayerColor color = i % 2 == 0 ? PlayerColor.WHITE : PlayerColor.BLACK;
             String nodeId = "node-" + i;
             AnalysisNode node = new AnalysisNode(
@@ -84,16 +92,16 @@ public class AnalysisService {
                     moves.get(i),
                     fen,
                     result.getBestMove(),
-                    result.getEvalScore(),
+                    normalizedScore,
                     true
             );
 
             node.setClassification(
-                    moveClassifier.classify(prevScore, result.getEvalScore(), color)
+                    moveClassifier.classify(prevScore, normalizedScore, color)
             );
             nodes.add(node);
             parentId = nodeId;
-            prevScore = result.getEvalScore();
+            prevScore = normalizedScore;
         }
 
         // 저장
@@ -102,16 +110,12 @@ public class AnalysisService {
 
         try {
             String tree = objectMapper.writeValueAsString(nodes);
-            analysisRepository.save(
-                    new Analysis(user, gameRecord, whiteAccuracy, blackAccuracy, tree));
+            Analysis analysis = new Analysis(user,gameRecord, whiteAccuracy, blackAccuracy, tree);
+            analysisRepository.save(analysis);
+            return analysis;
         } catch (Exception e) {
             throw new RuntimeException("분석 저장 실패", e);
         }
-    }
-
-    public Analysis getAnalysis(Long gameRecordId, Long userId) {
-        return analysisRepository.findByGameRecordIdAndUserId(gameRecordId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("분석 결과가 없습니다."));
     }
 
     private List<String> parseMoves(String pgn) {

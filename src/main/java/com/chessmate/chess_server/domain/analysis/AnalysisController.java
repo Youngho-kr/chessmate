@@ -25,23 +25,12 @@ public class AnalysisController {
     }
 
     @PostMapping("/{gameRecordId}")
-    public ResponseEntity<Void> analyze(@PathVariable Long gameRecordId,
+    public ResponseEntity<AnalysisResponse> analyze(@PathVariable Long gameRecordId,
                                         @AuthenticationPrincipal String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
 
-        analysisService.analyze(gameRecordId, user.getId());
-        return ResponseEntity.ok().build();
-    }
-
-    @GetMapping("/{gameRecordId}")
-    public ResponseEntity<AnalysisResponse> getAnalysis(
-            @PathVariable Long gameRecordId,
-            @AuthenticationPrincipal String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
-
-        Analysis analysis = analysisService.getAnalysis(gameRecordId, user.getId());
+        Analysis analysis = analysisService.analyze(gameRecordId, user.getId());
         return ResponseEntity.ok(new AnalysisResponse(analysis, objectMapper));
     }
 }

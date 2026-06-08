@@ -7,17 +7,14 @@ import org.springframework.stereotype.Component;
 public class MoveClassifier {
 
     public Classification classify(int scoreBefore, int scoreAfter, PlayerColor color) {
-        int diff;
-        if (color == PlayerColor.WHITE) {
-            diff = scoreAfter - scoreBefore;
-        } else {
-            diff = scoreBefore - scoreAfter;
-        }
+        int delta = scoreAfter - scoreBefore;
 
-        if (diff >= 0 ) return Classification.BEST;
-        else if (diff >= -20) return Classification.GOOD;
-        else if (diff >= -50) return Classification.INACCURACY;
-        else if (diff >= -100) return Classification.MISTAKE;
-        else return Classification.BLUNDER;
+        int playerDelta = color == PlayerColor.WHITE ? delta : -delta;
+
+        if      (playerDelta >= 0 )    return Classification.BEST;
+        else if (playerDelta >= -20)   return Classification.GOOD;
+        else if (playerDelta >= -50)   return Classification.INACCURACY;
+        else if (playerDelta >= -100)  return Classification.MISTAKE;
+        else                           return Classification.BLUNDER;
     }
 }
