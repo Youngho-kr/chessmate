@@ -103,15 +103,17 @@
                 webSocketFactory: () => new SockJS('/ws-chess'),
                 connectHeaders: { Authorization: 'Bearer ' + accessToken },
                 onConnect: () => {
+                    startTimer();
                     client.subscribe('/topic/game/' + gameId, (msg) => {
                         const data = JSON.parse(msg.body);
 
                         if (data.type === 'MOVE') {
                             const from = data.san.substring(0, 2);
                             const to = data.san.substring(2, 4);
-                            chess.move({ from: from, to: to, prmotion: 'q' });
+                            chess.move({ from: from, to: to, promotion: 'q' });
                             board.position(chess.fen());
-                            updateTimers(data.whiteTimerLeftMs, data.blackTimerLeftMs);
+                            updateTimers(data.whiteTimeLeftMs, data.blackTimeLeftMs);
+                            startTimer();
                         } else if (data.type === 'GAME_OVER') {
                             showResult(data);
                         } else if (data.type === 'DRAW_OFFER') {
@@ -119,7 +121,7 @@
                                 document.getElementById('drawOfferSection').style.display = 'block';
                             }
                         } else if (data.type === 'DRAW_DECLINE') {
-                            document.getElementById('drawOfferSection').stype.display = 'none';
+                            document.getElementById('drawOfferSection').style.display = 'none';
                         }
                     });
                 }
@@ -199,7 +201,23 @@
             document.getElementById('drawOfferSection').style.display = 'none';
         }
 
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (chess.turn() === (myColor === 'WHITE' ? 'w' : 'b')) {
+                    myTimeLeft = Math.max(0, myTimeLeft - 1000);
+                } else {
+                    opponentTimeLeft = Math.max(0, opponentTimeLeft - 1000);
+                }
+                renderTimers();
+            }, 1000);
+        }
+
         window.onload = () => {
+            const timeLimit = parseInt(sessionStorage.getItem('timeLimit'));
+            myTimeLeft = timeLimit;
+            opponentTimeLeft = timeLimit;
+
             initBoard();
             connectWebSocket();
         }

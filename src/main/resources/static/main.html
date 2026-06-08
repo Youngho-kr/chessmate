@@ -71,6 +71,7 @@
               const data = JSON.parse(msg.body);
               sessionStorage.setItem('gameId', data.gameId);
               sessionStorage.setItem('color', data.playerColor);
+              sessionStorage.setItem('timeLimit', data.timeLimit);
 
               window.location.href = '/play.html';
             })
