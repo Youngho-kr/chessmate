@@ -42,7 +42,7 @@ public class GameRecord {
     private String externalId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = true)
     private PlayerColor winner;
 
     @Enumerated(EnumType.STRING)
