@@ -36,12 +36,22 @@ public class WebSocketSecurityConfig implements WebSocketMessageBrokerConfigurer
 
                 if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
                     String authHeader = accessor.getFirstNativeHeader("Authorization");
+
                     if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                        // 로그인 사용자는 JWT 인증
                         String token = authHeader.substring(7);
                         if (jwtProvider.isValid(token)) {
                             String email = jwtProvider.getEmail(token);
                             UsernamePasswordAuthenticationToken auth =
                                     new UsernamePasswordAuthenticationToken(email, null, List.of());
+                            accessor.setUser(auth);
+                        }
+                    } else {
+                        // 게스트는 게스트 ID로 임시 인증
+                        String guestId = accessor.getFirstNativeHeader("GuestId");
+                        if (guestId != null && !guestId.isBlank()) {
+                            UsernamePasswordAuthenticationToken auth =
+                                    new UsernamePasswordAuthenticationToken("guest: " + guestId, null, List.of());
                             accessor.setUser(auth);
                         }
                     }

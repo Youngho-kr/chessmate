@@ -268,7 +268,7 @@
     function connectWebSocket() {
         client = new StompJs.Client({
             webSocketFactory: () => new SockJS('/ws-chess'),
-            connectHeaders: { Authorization: 'Bearer ' + accessToken },
+            connectHeaders: getConnectHeaders(),
             onConnect: () => {
                 client.subscribe('/user/queue/match', (msg) => {
                     const data = JSON.parse(msg.body);
