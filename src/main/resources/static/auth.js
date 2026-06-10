@@ -27,7 +27,7 @@ async function authFetch(url, options = {}) {
         } else {
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
-            window.location.href = '/login.html';
+            // window.location.href = '/';
         }
     }
 
