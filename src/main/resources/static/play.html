@@ -2,7 +2,12 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChessMate - 대전</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
@@ -10,229 +15,462 @@
     <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs/bundles/stomp.umd.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     <style>
-        #board { width: 480px; }
-        #gameInfo { margin: 20px 0; }
-        #opponentTimer, #myTimer { font-size: 24px; font-weight: bold; }
-        #resultPopup {
+        .page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .play-content {
+            flex: 1;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 24px;
+            padding: 32px 24px;
+        }
+
+        /* 왼쪽: 체스판 영역 */
+        .board-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .player-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 480px;
+        }
+
+        .player-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .timer {
+            font-size: 20px;
+            font-weight: 500;
+            font-family: var(--font-mono);
+            color: var(--text-primary);
+            letter-spacing: 0.05em;
+        }
+
+        .timer.active {
+            color: var(--text-primary);
+        }
+
+        .timer.inactive {
+            color: var(--text-muted);
+        }
+
+        #board {
+            width: 480px;
+        }
+
+        .action-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 480px;
+        }
+
+        .draw-offer-box {
+            display: none;
+            padding: 12px 16px;
+            border: 0.5px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--bg-surface);
+            width: 480px;
+        }
+
+        .draw-offer-text {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .draw-offer-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* 오른쪽: 기보 패널 */
+        .notation-panel {
+            width: 200px;
+            border: 0.5px solid var(--border);
+            border-radius: var(--radius-lg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            align-self: stretch;
+            max-height: 580px;
+        }
+
+        .notation-header {
+            padding: 12px 16px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+            border-bottom: 0.5px solid var(--border);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .notation-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+
+        .notation-row {
+            display: grid;
+            grid-template-columns: 28px 1fr 1fr;
+            align-items: center;
+            min-height: 28px;
+            padding: 0 8px;
+        }
+
+        .notation-row:hover {
+            background: var(--bg-surface);
+        }
+
+        .notation-num {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        .notation-move {
+            font-size: 13px;
+            font-family: var(--font-mono);
+            color: var(--text-primary);
+            padding: 2px 4px;
+            border-radius: var(--radius-sm);
+        }
+
+        /* 게임 종료 팝업 */
+        .result-overlay {
             display: none;
             position: fixed;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 30px;
-            border: 2px solid black;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .result-overlay.show {
+            display: flex;
+        }
+
+        .result-card {
+            background: var(--bg);
+            border: 0.5px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            width: 300px;
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .result-title {
+            font-size: 22px;
+            font-weight: 500;
+        }
+
+        .result-reason {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .result-rating {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
         }
     </style>
 </head>
 <body>
-    <div id="opponentInfo">
-        <span id="opponentName"></span>
-        <span id="opponentTimer"></span>
-    </div>
 
-    <div id="board"></div>
+<div class="page">
+    <nav class="navbar">
+        <a href="/main.html" class="navbar-logo">ChessMate</a>
+    </nav>
 
-    <div id="myInfo">
-        <span id="myName"></span>
-        <span id="myTimer"></span>
-    </div>
+    <div class="play-content">
 
-    <div id="gameInfo">
-        <button onclick="resign()">기권</button>
-        <button onclick="drawOffer()">무승부 제안</button>
-        <div id="drawOfferSection" style="display:none">
-            <p>상대방이 무승부를 제안했습니다.</p>
-            <button onclick="drawAccept()">수락</button>
-            <button onclick="drawDecline()">거절</button>
+        <!-- 왼쪽: 체스판 -->
+        <div class="board-section">
+            <div class="player-row">
+                <span class="player-name" id="opponentName"></span>
+                <span class="timer inactive" id="opponentTimer">--:--</span>
+            </div>
+
+            <div id="board"></div>
+
+            <div class="player-row">
+                <span class="player-name" id="myName"></span>
+                <span class="timer active" id="myTimer">--:--</span>
+            </div>
+
+            <div class="action-row">
+                <button class="btn btn-outline btn-sm" onclick="resign()">기권</button>
+                <button class="btn btn-ghost btn-sm" onclick="drawOffer()">무승부 제안</button>
+            </div>
+
+            <div class="draw-offer-box" id="drawOfferSection">
+                <div class="draw-offer-text">상대방이 무승부를 제안했습니다.</div>
+                <div class="draw-offer-actions">
+                    <button class="btn btn-primary btn-sm" onclick="drawAccept()">수락</button>
+                    <button class="btn btn-outline btn-sm" onclick="drawDecline()">거절</button>
+                </div>
+            </div>
         </div>
+
+        <!-- 오른쪽: 기보 -->
+        <div class="notation-panel">
+            <div class="notation-header">기보</div>
+            <div class="notation-list" id="notationList"></div>
+        </div>
+
     </div>
+</div>
 
-    <div id="resultPopup">
-        <h2 id="resultTitle"></h2>
-        <p id="resultDetail"></p>
-        <button onclick="window.location.href='main.html'">메인으로</button>
+<!-- 게임 종료 팝업 -->
+<div class="result-overlay" id="resultOverlay">
+    <div class="result-card">
+        <div class="result-title" id="resultTitle"></div>
+        <div class="result-reason" id="resultReason"></div>
+        <div class="result-rating" id="resultRating"></div>
+        <button class="btn btn-primary" style="margin-top: 16px;" onclick="window.location.href='/main.html'">메인으로</button>
     </div>
+</div>
 
-    <script src="/auth.js"></script>
-    <script>
-        const accessToken = localStorage.getItem('accessToken');
-        if (!accessToken) window.location.href = '/';
+<script src="/auth.js"></script>
+<script>
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) window.location.href = '/';
 
-        const gameId = sessionStorage.getItem('gameId');
-        const myColor = sessionStorage.getItem('color');
-        if (!gameId || !myColor) window.location.href = '/main.html';
+    const gameId = sessionStorage.getItem('gameId');
+    const myColor = sessionStorage.getItem('color');
+    if (!gameId || !myColor) window.location.href = '/main.html';
 
-        let client;
-        let chess = new Chess();
-        let board;
-        let myTimeLeft;
-        let opponentTimeLeft;
-        let timerInterval;
+    const isComputerGame = sessionStorage.getItem('isComputerGame') === 'true';
 
-        const isComputerGame = sessionStorage.getItem('isComputerGame') === 'true';
+    let client;
+    let chess = new Chess();
+    let board;
+    let myTimeLeft;
+    let opponentTimeLeft;
+    let timerInterval;
+    let moveHistory = []; // { white, black } 형태로 쌍으로 저장
 
-        if (isComputerGame) {
-            document.getElementById('myTimer').style.display = 'none';
-            document.getElementById('opponentTimer').style.display = 'none';
-            document.getElementById('drawOfferSection').style.display = 'none';
-        }
+    // 컴퓨터 대전이면 타이머/무승부 숨김
+    if (isComputerGame) {
+        document.getElementById('myTimer').style.display = 'none';
+        document.getElementById('opponentTimer').style.display = 'none';
+    }
 
-        function initBoard() {
-            board = ChessBoard('board', {
-                position: 'start',
-                draggable: true,
-                orientation: myColor == 'WHITE' ? 'white' : 'black',
-                onDrop: onDrop,
-                pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
-            });
-        }
+    function initBoard() {
+        board = ChessBoard('board', {
+            position: 'start',
+            draggable: true,
+            orientation: myColor === 'WHITE' ? 'white' : 'black',
+            onDrop: onDrop,
+            pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
+        });
+    }
 
-        function onDrop(source, target) {
-            const move = chess.move({
-                from: source,
-                to: target,
-                promotion: 'q'
-            });
+    function onDrop(source, target) {
+        const move = chess.move({ from: source, to: target, promotion: 'q' });
+        if (move === null) return 'snapback';
+        chess.undo();
 
-            if (move == null) return 'snapback';
+        client.publish({
+            destination: '/app/game/' + gameId + '/move',
+            body: JSON.stringify({ from: source, to: target })
+        });
+    }
 
-            const san = move.san;
-            chess.undo();
+    function connectWebSocket() {
+        client = new StompJs.Client({
+            webSocketFactory: () => new SockJS('/ws-chess'),
+            connectHeaders: { Authorization: 'Bearer ' + accessToken },
+            onConnect: () => {
+                startTimer();
+                client.subscribe('/topic/game/' + gameId, (msg) => {
+                    const data = JSON.parse(msg.body);
 
-            client.publish({
-                destination: '/app/game/' + gameId + '/move',
-                body: JSON.stringify({ from: source, to: target })
-            });
-        }
-
-        function connectWebSocket() {
-            client = new StompJs.Client({
-                webSocketFactory: () => new SockJS('/ws-chess'),
-                connectHeaders: { Authorization: 'Bearer ' + accessToken },
-                onConnect: () => {
-                    startTimer();
-                    client.subscribe('/topic/game/' + gameId, (msg) => {
-                        const data = JSON.parse(msg.body);
-
-                        if (data.type === 'MOVE') {
-                            const from = data.san.substring(0, 2);
-                            const to = data.san.substring(2, 4);
-                            chess.move({ from: from, to: to, promotion: 'q' });
-                            board.position(chess.fen());
-                            updateTimers(data.whiteTimeLeftMs, data.blackTimeLeftMs);
-                            startTimer();
-                        } else if (data.type === 'GAME_OVER') {
-                            showResult(data);
-                        } else if (data.type === 'DRAW_OFFER') {
-                            if (data.offerPlayer !== myColor) {
-                                document.getElementById('drawOfferSection').style.display = 'block';
-                            }
-                        } else if (data.type === 'DRAW_DECLINE') {
-                            document.getElementById('drawOfferSection').style.display = 'none';
-                        } else if (data.type == "GAME_START") {
-                            // 게임 시작
+                    if (data.type === 'MOVE') {
+                        const from = data.san.substring(0, 2);
+                        const to = data.san.substring(2, 4);
+                        const move = chess.move({ from, to, promotion: 'q' });
+                        board.position(chess.fen());
+                        if (move) appendNotation(move.san);
+                        updateTimers(data.whiteTimeLeftMs, data.blackTimeLeftMs);
+                        startTimer();
+                    } else if (data.type === 'GAME_OVER') {
+                        clearInterval(timerInterval);
+                        showResult(data);
+                    } else if (data.type === 'DRAW_OFFER') {
+                        if (data.offerPlayer !== myColor) {
+                            document.getElementById('drawOfferSection').style.display = 'block';
                         }
-                    });
+                    } else if (data.type === 'DRAW_DECLINE') {
+                        document.getElementById('drawOfferSection').style.display = 'none';
+                    }
+                });
 
-                    client.publish({ destination: '/app/game/' + gameId + '/ready' })
-                }
-            });
-            client.activate();
+                client.publish({ destination: '/app/game/' + gameId + '/ready' });
+            }
+        });
+        client.activate();
+    }
+
+    // 기보에 수 추가
+    function appendNotation(san) {
+        const list = document.getElementById('notationList');
+        const totalMoves = chess.history().length;
+        const moveNum = Math.ceil(totalMoves / 2);
+        const isWhiteMove = totalMoves % 2 === 1;
+
+        if (isWhiteMove) {
+            // 새 행 추가
+            const row = document.createElement('div');
+            row.className = 'notation-row';
+            row.id = 'notation-row-' + moveNum;
+            row.innerHTML = `
+                <span class="notation-num">${moveNum}.</span>
+                <span class="notation-move" id="notation-w-${moveNum}">${san}</span>
+                <span class="notation-move" id="notation-b-${moveNum}"></span>
+            `;
+            list.appendChild(row);
+        } else {
+            // 기존 행에 흑 수 추가
+            const blackCell = document.getElementById('notation-b-' + moveNum);
+            if (blackCell) blackCell.textContent = san;
         }
 
-        function updateTimers(whiteTimeLeftMs, blackTimeLeftMs) {
-            if (myColor === 'WHITE') {
-                myTimeLeft = whiteTimeLeftMs;
-                opponentTimeLeft = blackTimeLeftMs;
+        // 스크롤 최하단 유지
+        list.scrollTop = list.scrollHeight;
+    }
+
+    function updateTimers(whiteTimeLeftMs, blackTimeLeftMs) {
+        if (myColor === 'WHITE') {
+            myTimeLeft = whiteTimeLeftMs;
+            opponentTimeLeft = blackTimeLeftMs;
+        } else {
+            myTimeLeft = blackTimeLeftMs;
+            opponentTimeLeft = whiteTimeLeftMs;
+        }
+        renderTimers();
+    }
+
+    function renderTimers() {
+        document.getElementById('myTimer').textContent = formatTime(myTimeLeft);
+        document.getElementById('opponentTimer').textContent = formatTime(opponentTimeLeft);
+    }
+
+    function formatTime(ms) {
+        const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    function showResult(data) {
+        const resultTitle = document.getElementById('resultTitle');
+        const resultReason = document.getElementById('resultReason');
+        const resultRating = document.getElementById('resultRating');
+
+        if (data.result === 'DRAW') {
+            resultTitle.textContent = '무승부';
+        } else if (data.result === myColor + '_WIN') {
+            resultTitle.textContent = '승리';
+        } else {
+            resultTitle.textContent = '패배';
+        }
+
+        const reasonMap = {
+            CHECKMATE: '체크메이트',
+            RESIGNATION: '기권',
+            WIN_ON_TIME: '시간 초과',
+            STALEMATE: '스테일메이트',
+            DRAW_BY_AGREEMENT: '합의 무승부',
+            THREEFOLD_REPETITION: '3회 반복',
+            INSUFFICIENT_MATING_MATERIAL: '기물 부족',
+            FIFTY_MOVE_RULE: '50수 규칙',
+        };
+        resultReason.textContent = reasonMap[data.resultReason] ?? data.resultReason;
+
+        if (!isComputerGame) {
+            const change = myColor === 'WHITE' ? data.whiteRatingChange : data.blackRatingChange;
+            resultRating.textContent = `레이팅 ${change >= 0 ? '+' : ''}${change}`;
+        }
+
+        document.getElementById('resultOverlay').classList.add('show');
+    }
+
+    function resign() {
+        if (confirm('정말 기권하시겠습니까?')) {
+            client.publish({ destination: '/app/game/' + gameId + '/resign' });
+        }
+    }
+
+    function drawOffer() {
+        client.publish({
+            destination: '/app/game/' + gameId + '/draw',
+            body: JSON.stringify({ action: 'OFFER' })
+        });
+    }
+
+    function drawAccept() {
+        client.publish({
+            destination: '/app/game/' + gameId + '/draw',
+            body: JSON.stringify({ action: 'ACCEPT' })
+        });
+        document.getElementById('drawOfferSection').style.display = 'none';
+    }
+
+    function drawDecline() {
+        client.publish({
+            destination: '/app/game/' + gameId + '/draw',
+            body: JSON.stringify({ action: 'DECLINE' })
+        });
+        document.getElementById('drawOfferSection').style.display = 'none';
+    }
+
+    function startTimer() {
+        clearInterval(timerInterval);
+        if (isComputerGame) return;
+        timerInterval = setInterval(() => {
+            if (chess.turn() === (myColor === 'WHITE' ? 'w' : 'b')) {
+                myTimeLeft = Math.max(0, myTimeLeft - 1000);
             } else {
-                myTimeLeft = blackTimeLeftMs;
-                opponentTimeLeft = whiteTimeLeftMs;
+                opponentTimeLeft = Math.max(0, opponentTimeLeft - 1000);
             }
             renderTimers();
-        }
+        }, 1000);
+    }
 
-        function renderTimers() {
-            document.getElementById('myTimer').textContent = formatTime(myTimeLeft);
-            document.getElementById('opponentTimer').textContent = formatTime(opponentTimeLeft);
-        }
+    window.onload = () => {
+        const timeLimit = parseInt(sessionStorage.getItem('timeLimit'));
+        myTimeLeft = timeLimit;
+        opponentTimeLeft = timeLimit;
 
-        function formatTime(ms) {
-            const totalSeconds = Math.floor(ms / 1000);
-            const minutes = Math.floor(totalSeconds / 60);
-            const seconds = totalSeconds % 60;
-            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        }
+        // 프로필에서 닉네임 가져오기
+        authFetch('/api/users/me').then(r => r.json()).then(profile => {
+            document.getElementById('myName').textContent = profile.nickname;
+        });
 
-        function showResult(data) {
-            const popup = document.getElementById('resultPopup');
-            const title = document.getElementById('resultTitle');
-            const detail = document.getElementById('resultDetail');
-
-            if (data.result === 'DRAW') {
-                title.textContent = '무승부';
-            } else if (data.result === myColor + '_WIN') {
-                title.textContent = '승리';
-            } else {
-                title.textContent = '패배';
-            }
-
-            const ratingChange = myColor === 'WHITE'
-                ? data.whiteRatingChange : data.blackRatingChange;
-            detail.textContent = `레이팅 변동: ${ratingChange > 0 ? '+' : ''}${ratingChange}`;
-
-            popup.style.display = 'block';
-        }
-
-        function resign() {
-            if (confirm('정말 기권하시겠습니까?')) {
-                client.publish({ destination: '/app/game/' + gameId + '/resign' });
-            }
-        }
-
-        function drawOffer() {
-            client.publish({
-                destination: '/app/game/' + gameId + '/draw',
-                body: JSON.stringify({ action: 'OFFER' })
-            });
-        }
-
-        function drawAccept() {
-            client.publish({
-                destination: '/app/game/' + gameId + '/draw',
-                body: JSON.stringify({ action: 'ACCEPT' })
-            });
-            document.getElementById('drawOfferSection').style.display = 'none';
-        }
-
-        function drawDecline() {
-            client.publish({
-                destination: '/app/game/' + gameId + '/draw',
-                body: JSON.stringify({ action: 'DECLINE' })
-            });
-            document.getElementById('drawOfferSection').style.display = 'none';
-        }
-
-        function startTimer() {
-            clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                if (chess.turn() === (myColor === 'WHITE' ? 'w' : 'b')) {
-                    myTimeLeft = Math.max(0, myTimeLeft - 1000);
-                } else {
-                    opponentTimeLeft = Math.max(0, opponentTimeLeft - 1000);
-                }
-                renderTimers();
-            }, 1000);
-        }
-
-        window.onload = () => {
-            const timeLimit = parseInt(sessionStorage.getItem('timeLimit'));
-            myTimeLeft = timeLimit;
-            opponentTimeLeft = timeLimit;
-
-            initBoard();
-            connectWebSocket();
-        }
-    </script>
+        initBoard();
+        connectWebSocket();
+    };
+</script>
 </body>
 </html>
