@@ -408,11 +408,6 @@
         };
         resultReason.textContent = reasonMap[data.resultReason] ?? data.resultReason;
 
-        if (!isComputerGame) {
-            const change = myColor === 'WHITE' ? data.whiteRatingChange : data.blackRatingChange;
-            resultRating.textContent = `레이팅 ${change >= 0 ? '+' : ''}${change}`;
-        }
-
         document.getElementById('resultOverlay').classList.add('show');
     }
 

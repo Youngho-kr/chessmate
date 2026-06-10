@@ -22,7 +22,6 @@ public class GameService {
     private final GameStateService gameStateService;
     private final SimpMessagingTemplate messagingTemplate;
     private final UserRepository userRepository;
-    private final EloService eloService;
     private final TimerService timerService;
     private final GameRecordService gameRecordService;
     private final StockfishService stockfishService;
@@ -30,7 +29,6 @@ public class GameService {
     public GameService(GameStateService gameStateService,
                        SimpMessagingTemplate messagingTemplate,
                        UserRepository userRepository,
-                       EloService eloService,
                        TimerService timerService,
                        GameRecordService gameRecordService,
                        StockfishService stockfishService) {
@@ -156,22 +154,6 @@ public class GameService {
                 : userRepository.findByEmail(gameState.getBlackEmail())
                   .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
 
-        int whiteChange = 0;
-        int blackChange = 0;
-
-        if (!gameState.isComputerGame()) {
-            double whiteScore = winner == null ? 0.5 : (winner == PlayerColor.WHITE ? 1.0 : 0.0);
-            double blackScore = 1.0 - whiteScore;
-
-            whiteChange = eloService.calculateChange(
-                    whiteUser.getEloRating(), blackUser.getEloRating(), whiteScore);
-            blackChange = eloService.calculateChange(
-                    blackUser.getEloRating(), whiteUser.getEloRating(), blackScore);
-
-            whiteUser.updateEloRating(whiteUser.getEloRating() + whiteChange);
-            blackUser.updateEloRating(blackUser.getEloRating() + blackChange);
-        }
-
         String pgn = String.join(" ", gameState.getMoves());
         gameRecordService.save(pgn, resultReason, whiteUser, blackUser, winner);
 
@@ -181,7 +163,7 @@ public class GameService {
                 : (winner == PlayerColor.WHITE ? "WHITE_WIN" : "BLACK_WIN");
 
         messagingTemplate.convertAndSend("/topic/game/" + gameId,
-                new GameOverResponse(result, resultReason.name(), whiteChange, blackChange));
+                new GameOverResponse(result, resultReason.name()));
     }
 
     public ComputerGameResponse startComputerGame(String email, int skillLevel) {

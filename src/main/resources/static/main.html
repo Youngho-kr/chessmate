@@ -59,11 +59,6 @@
             font-weight: 500;
         }
 
-        .profile-elo {
-            font-size: 13px;
-            color: var(--text-muted);
-        }
-
         .match-row {
             display: flex;
             align-items: center;
@@ -171,7 +166,6 @@
         <div class="section">
             <div class="profile-info">
                 <span class="profile-nickname" id="nickname"></span>
-                <span class="profile-elo">ELO <span id="eloRating"></span></span>
             </div>
         </div>
 
@@ -225,7 +219,6 @@
     async function init() {
         const profile = await authFetch('/api/users/me').then(r => r.json());
         document.getElementById('nickname').textContent = profile.nickname;
-        document.getElementById('eloRating').textContent = profile.eloRating;
         loadGames();
         connectWebSocket();
     }
