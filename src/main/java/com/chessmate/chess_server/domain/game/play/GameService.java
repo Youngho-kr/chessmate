@@ -207,15 +207,15 @@ public class GameService {
     public void ready(String gameId) {
         GameState gameState = gameStateService.find(gameId);
         if (gameState == null) return;
+
         gameState.setReadyCount(gameState.getReadyCount() + 1);
         gameStateService.update(gameState);
 
         int requiredCount = gameState.isComputerGame() ? 1 : 2;
-        gameState.setReadyCount(gameState.getReadyCount() + 1);
         gameStateService.update(gameState);
 
         if (gameState.getReadyCount() >= requiredCount) {
-            if (!gameState.isComputerGame()) {
+            if (gameState.getWhiteTimeLeftMs() > 0) {
                 timerService.start(gameId);
             }
 

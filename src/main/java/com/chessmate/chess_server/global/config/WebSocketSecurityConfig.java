@@ -51,7 +51,7 @@ public class WebSocketSecurityConfig implements WebSocketMessageBrokerConfigurer
                         String guestId = accessor.getFirstNativeHeader("GuestId");
                         if (guestId != null && !guestId.isBlank()) {
                             UsernamePasswordAuthenticationToken auth =
-                                    new UsernamePasswordAuthenticationToken("guest: " + guestId, null, List.of());
+                                    new UsernamePasswordAuthenticationToken("guest:" + guestId, null, List.of());
                             accessor.setUser(auth);
                         }
                     }

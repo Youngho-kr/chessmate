@@ -72,6 +72,8 @@ public class InviteService {
                     0L
             );
 
+            gameStateService.save(gameState);
+
             redisTemplate.delete(KEY_PREFIX + code);
 
             messagingTemplate.convertAndSendToUser(
