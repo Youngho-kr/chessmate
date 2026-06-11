@@ -247,18 +247,15 @@
         <div class="result-title" id="resultTitle"></div>
         <div class="result-reason" id="resultReason"></div>
         <div class="result-rating" id="resultRating"></div>
-        <button class="btn btn-primary" style="margin-top: 16px;" onclick="window.location.href='/main.html'">메인으로</button>
+        <button class="btn btn-primary" style="margin-top: 16px;" onclick="window.location.href='/'">메인으로</button>
     </div>
 </div>
 
 <script src="/auth.js"></script>
 <script>
-    const accessToken = localStorage.getItem('accessToken');
-    if (!accessToken) window.location.href = '/';
-
     const gameId = sessionStorage.getItem('gameId');
     const myColor = sessionStorage.getItem('color');
-    if (!gameId || !myColor) window.location.href = '/main.html';
+    if (!gameId || !myColor) window.location.href = '/';
 
     const isComputerGame = sessionStorage.getItem('isComputerGame') === 'true';
 
@@ -297,10 +294,16 @@
         });
     }
 
+    function getConnectHeaders() {
+        const accessToken = localStorage.getItem('accessToken');
+        if (accessToken) return { Authorization: 'Bearer ' + accessToken };
+        return { GuestId: sessionStorage.getItem('guestId') };
+    }
+
     function connectWebSocket() {
         client = new StompJs.Client({
             webSocketFactory: () => new SockJS('/ws-chess'),
-            connectHeaders: { Authorization: 'Bearer ' + accessToken },
+            connectHeaders: getConnectHeaders(),
             onConnect: () => {
                 startTimer();
                 client.subscribe('/topic/game/' + gameId, (msg) => {
@@ -408,11 +411,6 @@
         };
         resultReason.textContent = reasonMap[data.resultReason] ?? data.resultReason;
 
-        if (!isComputerGame) {
-            const change = myColor === 'WHITE' ? data.whiteRatingChange : data.blackRatingChange;
-            resultRating.textContent = `레이팅 ${change >= 0 ? '+' : ''}${change}`;
-        }
-
         document.getElementById('resultOverlay').classList.add('show');
     }
 
@@ -458,15 +456,22 @@
         }, 1000);
     }
 
-    window.onload = () => {
+    window.onload = async () => {
         const timeLimit = parseInt(sessionStorage.getItem('timeLimit'));
         myTimeLeft = timeLimit;
         opponentTimeLeft = timeLimit;
 
-        // 프로필에서 닉네임 가져오기
-        authFetch('/api/users/me').then(r => r.json()).then(profile => {
-            document.getElementById('myName').textContent = profile.nickname;
-        });
+        // 닉네임 표시
+        const accessToken = localStorage.getItem('accessToken');
+        if (accessToken) {
+            const profile = await authFetch('/api/users/me').then(r => r.json());
+            document.getElementById('myName').textContent = profile.nickName;
+        } else {
+            document.getElementById('myName').textContent = 'Guest';
+        }
+
+        document.getElementById('opponentName').textContent =
+            sessionStorage.getItem('opponentName') || 'Opponent';
 
         initBoard();
         connectWebSocket();

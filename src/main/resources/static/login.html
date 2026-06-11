@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChessMate</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        .login-wrap {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 360px;
+            padding: 32px;
+        }
+
+        .login-header {
+            margin-bottom: 28px;
+        }
+
+        .login-logo {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-wrap">
+    <div class="login-card card">
+        <div class="login-header">
+            <div class="login-logo">ChessMate</div>
+        </div>
+
+        <form id="loginForm" class="form">
+            <div class="form-group">
+                <label for="email">이메일</label>
+                <input type="email" id="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">비밀번호</label>
+                <input type="password" id="password" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full">로그인</button>
+        </form>
+
+        <p id="message" class="message message-error" style="display: none; margin-top: 12px;"></p>
+        <div class="text-center mt-16">
+            <span class="text-muted">계정이 없으신가요?</span>
+            <a href="/signup.html">회원가입</a>
+        </div>
+    </div>
+</div>
+
+<script src="/auth.js"></script>
+<script>
+    const accessToken = localStorage.getItem('accessToken');
+    if (accessToken) window.location.href = '/';
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            localStorage.setItem('accessToken', data.accessToken);
+            localStorage.setItem('refreshToken', data.refreshToken);
+            window.location.href = '/';
+        } else {
+            const msg = document.getElementById('message');
+            msg.textContent = '이메일 또는 비밀번호가 올바르지 않습니다.';
+            msg.style.display = 'block';
+        }
+    });
+</script>
+</body>
+</html>

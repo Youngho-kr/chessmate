@@ -25,9 +25,6 @@ public class User {
     @Column(nullable = false, unique = true)
     private String nickname;
 
-    @Column(nullable = false)
-    private int eloRating = 500;
-
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -49,9 +46,5 @@ public class User {
         this.email = email;
         this.password = password;
         this.nickname = nickname;
-    }
-
-    public void updateEloRating(int newRating) {
-        this.eloRating = newRating;
     }
 }

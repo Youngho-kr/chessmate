@@ -22,7 +22,6 @@ public class GameService {
     private final GameStateService gameStateService;
     private final SimpMessagingTemplate messagingTemplate;
     private final UserRepository userRepository;
-    private final EloService eloService;
     private final TimerService timerService;
     private final GameRecordService gameRecordService;
     private final StockfishService stockfishService;
@@ -30,14 +29,12 @@ public class GameService {
     public GameService(GameStateService gameStateService,
                        SimpMessagingTemplate messagingTemplate,
                        UserRepository userRepository,
-                       EloService eloService,
                        TimerService timerService,
                        GameRecordService gameRecordService,
                        StockfishService stockfishService) {
         this.gameStateService = gameStateService;
         this.messagingTemplate = messagingTemplate;
         this.userRepository = userRepository;
-        this.eloService = eloService;
         this.timerService = timerService;
         this.gameRecordService = gameRecordService;
         this.stockfishService = stockfishService;
@@ -149,28 +146,8 @@ public class GameService {
                            PlayerColor winner, ResultReason resultReason) {
         timerService.stop(gameId);
 
-        User whiteUser = gameState.isComputerGame() && gameState.getComputerColor() == PlayerColor.WHITE ? null
-                : userRepository.findByEmail(gameState.getWhiteEmail())
-                  .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
-        User blackUser = gameState.isComputerGame() && gameState.getComputerColor() == PlayerColor.BLACK ? null
-                : userRepository.findByEmail(gameState.getBlackEmail())
-                  .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
-
-        int whiteChange = 0;
-        int blackChange = 0;
-
-        if (!gameState.isComputerGame()) {
-            double whiteScore = winner == null ? 0.5 : (winner == PlayerColor.WHITE ? 1.0 : 0.0);
-            double blackScore = 1.0 - whiteScore;
-
-            whiteChange = eloService.calculateChange(
-                    whiteUser.getEloRating(), blackUser.getEloRating(), whiteScore);
-            blackChange = eloService.calculateChange(
-                    blackUser.getEloRating(), whiteUser.getEloRating(), blackScore);
-
-            whiteUser.updateEloRating(whiteUser.getEloRating() + whiteChange);
-            blackUser.updateEloRating(blackUser.getEloRating() + blackChange);
-        }
+        User whiteUser = resolveUser(gameState.getWhiteEmail(), gameState, PlayerColor.WHITE);
+        User blackUser = resolveUser(gameState.getBlackEmail(), gameState, PlayerColor.BLACK);
 
         String pgn = String.join(" ", gameState.getMoves());
         gameRecordService.save(pgn, resultReason, whiteUser, blackUser, winner);
@@ -181,7 +158,7 @@ public class GameService {
                 : (winner == PlayerColor.WHITE ? "WHITE_WIN" : "BLACK_WIN");
 
         messagingTemplate.convertAndSend("/topic/game/" + gameId,
-                new GameOverResponse(result, resultReason.name(), whiteChange, blackChange));
+                new GameOverResponse(result, resultReason.name()));
     }
 
     public ComputerGameResponse startComputerGame(String email, int skillLevel) {
@@ -192,10 +169,12 @@ public class GameService {
         PlayerColor userColor = Math.random() < 0.5 ? PlayerColor.WHITE : PlayerColor.BLACK;
         PlayerColor computerColor = userColor == PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
 
-        String whitEmail = userColor == PlayerColor.WHITE ? email : "stockfish " + skillLevel;
-        String blackEmail = userColor == PlayerColor.BLACK ? email : "stockfish " + skillLevel;
+        String stockfishId = "stockfish: " + skillLevel;
+        String whitEmail = userColor == PlayerColor.WHITE ? email : stockfishId;
+        String blackEmail = userColor == PlayerColor.BLACK ? email : stockfishId;
 
-        GameState gameState = GameState.createComputerGame(gameId, whitEmail, blackEmail, skillLevel, computerColor);
+        GameState gameState = GameState.createComputerGame(
+                gameId, whitEmail, blackEmail, skillLevel, computerColor);
         gameStateService.save(gameState);
 
         return new ComputerGameResponse(gameId, userColor);
@@ -228,15 +207,15 @@ public class GameService {
     public void ready(String gameId) {
         GameState gameState = gameStateService.find(gameId);
         if (gameState == null) return;
+
         gameState.setReadyCount(gameState.getReadyCount() + 1);
         gameStateService.update(gameState);
 
         int requiredCount = gameState.isComputerGame() ? 1 : 2;
-        gameState.setReadyCount(gameState.getReadyCount() + 1);
         gameStateService.update(gameState);
 
         if (gameState.getReadyCount() >= requiredCount) {
-            if (!gameState.isComputerGame()) {
+            if (gameState.getWhiteTimeLeftMs() > 0) {
                 timerService.start(gameId);
             }
 
@@ -276,5 +255,15 @@ public class GameService {
         gameState.setTurn(
                 gameState.getTurn() == PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE
         );
+    }
+
+    /**
+     * 로그인 사용자의 경우 DB에서 조회, 게스트 또는 컴퓨터면 null 반환
+     */
+    private User resolveUser(String email, GameState gameState, PlayerColor color) {
+        if (gameState.isComputerGame() && gameState.getComputerColor() == color) return null;
+        if (email.startsWith("guest:")) return null;
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회우너입니다."));
     }
 }

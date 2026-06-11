@@ -28,7 +28,6 @@ class GameServiceTest {
     private GameStateService gameStateService;
     private SimpMessagingTemplate messagingTemplate;
     private UserRepository userRepository;
-    private EloService eloService;
     private TimerService timerService;
     private GameRecordService gameRecordService;
     private StockfishService stockfishService;
@@ -38,13 +37,12 @@ class GameServiceTest {
         gameStateService = mock(GameStateService.class);
         messagingTemplate = mock(SimpMessagingTemplate.class);
         userRepository = mock(UserRepository.class);
-        eloService = new EloService();
         timerService = mock(TimerService.class);
         gameRecordService = mock(GameRecordService.class);
         stockfishService = mock(StockfishService.class);
 
         gameService = new GameService(gameStateService, messagingTemplate, userRepository,
-                 eloService, timerService, gameRecordService, stockfishService);
+                 timerService, gameRecordService, stockfishService);
     }
 
     @Test
