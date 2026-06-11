@@ -1,5 +1,6 @@
 package com.chessmate.chess_server.domain.game.play;
 
+import com.chessmate.chess_server.domain.game.common.PlayerColor;
 import com.chessmate.chess_server.domain.game.play.dto.DrawRequest;
 import com.chessmate.chess_server.domain.game.play.dto.MoveRequest;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -12,9 +13,16 @@ import java.security.Principal;
 public class GameController {
 
     private final GameService gameService;
+    private final GameStateService gameStateService;
 
-    public GameController(GameService gameService) {
+    public GameController(GameService gameService, GameStateService gameStateService) {
         this.gameService = gameService;
+        this.gameStateService = gameStateService;
+    }
+
+    @MessageMapping("/game/{gameId}/ready")
+    public void ready(@DestinationVariable String gameId) {
+        gameService.ready(gameId);
     }
 
     @MessageMapping("/game/{gameId}/move")

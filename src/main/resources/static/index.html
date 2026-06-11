@@ -2,52 +2,421 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChessMate</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs/bundles/stomp.umd.min.js"></script>
+    <style>
+        .page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-content {
+            flex: 1;
+            max-width: 640px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 32px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .profile-nickname {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .game-start-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .game-start-col {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .game-start-col::after {
+            content: '';
+            display: block;
+            width: 0.5px;
+            height: 20px;
+            background: var(--border);
+            margin-left: 4px;
+        }
+
+        .game-start-col:last-child::after {
+            display: none;
+        }
+
+        .invite-box {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            padding: 14px 16px;
+            border: 0.5px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--bg-surface);
+        }
+
+        .invite-code-display {
+            font-size: 28px;
+            font-weight: 500;
+            letter-spacing: 0.2em;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+        }
+
+        .invite-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .match-status {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 1.5px solid var(--border);
+            border-top-color: var(--text-primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .game-list { display: flex; flex-direction: column; }
+
+        .game-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 0.5px solid var(--border);
+        }
+
+        .game-item:last-child { border-bottom: none; }
+        .game-players { font-size: 14px; color: var(--text-primary); }
+        .game-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .game-right { display: flex; align-items: center; gap: 10px; }
+        .load-more { text-align: center; padding-top: 12px; }
+    </style>
 </head>
 <body>
-<h1>ChessMate</h1>
 
-<form id="loginForm">
-    <div>
-        <label>이메일</label>
-        <input type="email" id="email" required>
-    </div>
-    <div>
-        <label>비밀번호</label>
-        <input type="password" id="password" required>
-    </div>
-    <button type="submit">로그인</button>
-</form>
+<div class="page">
+    <nav class="navbar">
+        <a href="/" class="navbar-logo">ChessMate</a>
+        <div class="navbar-right" id="navRight"></div>
+    </nav>
 
-<p id="message"></p>
-<a href="/signup.html">회원가입</a>
+    <div class="main-content">
+        <!-- 소개 문구 (비로그인 사용자만) -->
+        <div id="introSection" style="display: none;">
+            <p style="font-size: 15px; color: var(--text-primary); line-height: 1.7;">
+                로그인 없이 바로 친구와 체스를 둘 수 있습니다.<br>
+                게임을 분석하고 실수를 되짚어보려면 로그인하세요.
+            </p>
+        </div>
+
+        <!-- 프로필 (로그인 사용자만) -->
+        <div class="section" id="profileSection" style="display: none;">
+            <div style="display: flex; align-items: baseline; gap: 12px;">
+                <span class="profile-nickname" id="nickname"></span>
+            </div>
+        </div>
+
+        <div class="divider" id="profileDivider" style="display: none;"></div>
+
+        <!-- 대전 시작 -->
+        <div class="section">
+            <div class="game-start-row">
+                <div class="game-start-col">
+                    <button id="matchBtn" class="btn btn-primary btn-sm" onclick="startMatch()">매치 찾기</button>
+                    <span id="matchStatus" class="match-status"></span>
+                </div>
+                <div class="game-start-col">
+                    <button class="btn btn-outline btn-sm" onclick="toggleInvite()">친구와 대전</button>
+                </div>
+                <div class="game-start-col">
+                    <select id="skillLevel">
+                        <option value="20">최강</option>
+                        <option value="15">어려움</option>
+                        <option value="10" selected>보통</option>
+                        <option value="5">쉬움</option>
+                        <option value="0">매우 쉬움</option>
+                    </select>
+                    <button class="btn btn-outline btn-sm" onclick="startComputerGame()">컴퓨터 대전</button>
+                </div>
+            </div>
+
+            <!-- 친구 초대 박스 -->
+            <div class="invite-box" id="inviteBox">
+                <div id="inviteCreate">
+                    <div class="invite-hint">초대 코드를 생성하거나 상대방 코드를 입력하세요.</div>
+                    <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center;">
+                        <button class="btn btn-primary btn-sm" onclick="createInvite()">코드 생성</button>
+                        <input type="text" id="inviteCodeInput" maxlength="6" placeholder="000000"
+                               style="width: 100px; text-align: center; font-family: var(--font-mono); letter-spacing: 0.1em;">
+                        <button class="btn btn-outline btn-sm" onclick="joinByCode()">참가</button>
+                    </div>
+                </div>
+                <div id="inviteWaiting" style="display: none;">
+                    <div class="invite-hint">상대방에게 코드를 알려주세요.</div>
+                    <div class="invite-code-display" id="inviteCodeDisplay"></div>
+                    <div class="invite-hint" style="margin-top: 4px;">
+                        <span class="spinner"></span>상대방 접속 대기 중...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 전적 (로그인 사용자만) -->
+        <div id="gameListSection" style="display: none;">
+            <div class="section">
+                <div class="section-title">전적</div>
+                <div class="card" style="padding: 0 20px;">
+                    <div class="game-list" id="games"></div>
+                </div>
+                <div class="load-more">
+                    <button id="loadMore" class="btn btn-ghost btn-sm" onclick="loadMore()">더 보기</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 비로그인 안내 -->
+        <div id="loginPrompt" style="display: none;">
+            <span class="text-muted">전적 저장 및 분석을 이용하려면 </span>
+            <a href="/login.html">로그인</a>
+            <span class="text-muted">이 필요합니다.</span>
+        </div>
+
+    </div>
+</div>
 
 <script src="/auth.js"></script>
 <script>
     const accessToken = localStorage.getItem('accessToken');
-    if (accessToken) window.location.href = "/main.html";
+    let client;
+    let page = 0;
+    let matching = false;
 
-    document.getElementById('loginForm').addEventListener('submit', async(e) => {
-       e.preventDefault();
+    async function init() {
+        await ensureGuestSession();
 
-       const response = await fetch('/api/auth/login', {
-           method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({
-               email: document.getElementById('email').value,
-               password: document.getElementById('password').value
-           })
-       });
+        if (accessToken) {
+            const profile = await authFetch('/api/users/me').then(r => r.json());
+            document.getElementById('nickname').textContent = profile.nickname;
+            document.getElementById('profileSection').style.display = 'block';
+            document.getElementById('profileDivider').style.display = 'block';
+            document.getElementById('gameListSection').style.display = 'block';
+            document.getElementById('navRight').innerHTML = `
+                <span class="text-muted" style="font-size: 13px;">${profile.nickname}</span>
+                <button class="btn btn-ghost btn-sm" onclick="logout()">로그아웃</button>
+            `;
+            loadGames();
+        } else {
+            document.getElementById('introSection').style.display = 'block';
+            document.getElementById('loginPrompt').style.display = 'block';
+            document.getElementById('navRight').innerHTML = `
+                <a href="/login.html">로그인</a>
+                <a href="/signup.html" class="btn btn-outline btn-sm">회원가입</a>
+            `;
+        }
 
-       if (response.ok) {
-           const data = await response.json();
-           localStorage.setItem('accessToken', data.accessToken);
-           localStorage.setItem('refreshToken', data.refreshToken);
-           window.location.href = 'main.html';
-       } else {
-           document.getElementById('message').textContent = '이메일 또는 비밀번호가 올바르지 않습니다.'
-       }
-    });
+        connectWebSocket();
+    }
+
+    async function ensureGuestSession() {
+        if (accessToken) return;
+        if (sessionStorage.getItem('guestId')) return;
+        const res = await fetch('/api/guest/session', { method: 'POST' });
+        const data = await res.json();
+        sessionStorage.setItem('guestId', data.guestId);
+    }
+
+    function getConnectHeaders() {
+        if (accessToken) return { Authorization: 'Bearer ' + accessToken };
+        return { GuestId: sessionStorage.getItem('guestId') };
+    }
+
+    async function loadGames() {
+        const data = await authFetch(`/api/games?page=${page}&size=10`).then(r => r.json());
+        const list = document.getElementById('games');
+
+        if (!data.content || data.content.length === 0) {
+            if (page === 0) {
+                list.innerHTML = '<div style="padding: 16px 0; color: var(--text-muted); font-size: 13px;">전적이 없습니다.</div>';
+            }
+            document.getElementById('loadMore').style.display = 'none';
+            return;
+        }
+
+        data.content.forEach(game => {
+            const item = document.createElement('div');
+            item.className = 'game-item';
+            const resultClass = game.result === 'WHITE_WIN' || game.result === 'BLACK_WIN'
+                ? 'badge-win' : 'badge-draw';
+            const resultText = game.result === 'WHITE_WIN' ? '승'
+                : game.result === 'BLACK_WIN' ? '패' : '무';
+            item.innerHTML = `
+                <div>
+                    <div class="game-players">${game.whitePlayer} vs ${game.blackPlayer}</div>
+                    <div class="game-meta">${game.resultReason ?? ''}</div>
+                </div>
+                <div class="game-right">
+                    <span class="badge ${resultClass}">${resultText}</span>
+                    <a href="/analysis.html?id=${game.gameId}" class="btn btn-outline btn-sm">분석</a>
+                </div>
+            `;
+            list.appendChild(item);
+        });
+
+        if (data.last) document.getElementById('loadMore').style.display = 'none';
+    }
+
+    function loadMore() {
+        page++;
+        loadGames();
+    }
+
+    function connectWebSocket() {
+        client = new StompJs.Client({
+            webSocketFactory: () => new SockJS('/ws-chess'),
+            connectHeaders: getConnectHeaders(),
+            onConnect: () => {
+                client.subscribe('/user/queue/match', (msg) => {
+                    const data = JSON.parse(msg.body);
+                    sessionStorage.setItem('gameId', data.gameId);
+                    sessionStorage.setItem('color', data.playerColor);
+                    sessionStorage.setItem('timeLimit', data.timeLimit);
+                    sessionStorage.setItem('opponentName', data.opponent);
+                    window.location.href = '/play.html';
+                });
+
+                client.subscribe('/user/queue/invite/matched', (msg) => {
+                    const data = JSON.parse(msg.body);
+                    sessionStorage.setItem('gameId', data.gameId);
+                    sessionStorage.setItem('color', data.playerColor);
+                    sessionStorage.setItem('timeLimit', '0');
+                    sessionStorage.setItem('opponentName', 'Guest');
+                    window.location.href = '/play.html';
+                });
+            }
+        });
+        client.activate();
+    }
+
+    function startMatch() {
+        if (!matching) {
+            client.publish({ destination: '/app/match/join' });
+            matching = true;
+            document.getElementById('matchBtn').textContent = '매칭 취소';
+            document.getElementById('matchBtn').className = 'btn btn-outline btn-sm';
+            document.getElementById('matchStatus').innerHTML = '<span class="spinner"></span>매칭 중...';
+        } else {
+            client.publish({ destination: '/app/match/cancel' });
+            matching = false;
+            document.getElementById('matchBtn').textContent = '매치 찾기';
+            document.getElementById('matchBtn').className = 'btn btn-primary btn-sm';
+            document.getElementById('matchStatus').textContent = '';
+        }
+    }
+
+    function toggleInvite() {
+        const box = document.getElementById('inviteBox');
+        box.style.display = box.style.display === 'none' || box.style.display === ''
+            ? 'flex' : 'none';
+    }
+
+    async function createInvite() {
+        const headers = { 'Content-Type': 'application/json' };
+        if (accessToken) {
+            headers['Authorization'] = 'Bearer ' + accessToken;
+        } else {
+            headers['GuestId'] = sessionStorage.getItem('guestId');
+        }
+
+        const res = await fetch('/api/invite', { method: 'POST', headers });
+        const data = await res.json();
+
+        document.getElementById('inviteCreate').style.display = 'none';
+        document.getElementById('inviteWaiting').style.display = 'block';
+        document.getElementById('inviteCodeDisplay').textContent = data.code;
+    }
+
+    async function joinByCode() {
+        const code = document.getElementById('inviteCodeInput').value.trim();
+        if (!code) return;
+
+        const headers = { 'Content-Type': 'application/json' };
+        if (accessToken) {
+            headers['Authorization'] = 'Bearer ' + accessToken;
+        } else {
+            headers['GuestId'] = sessionStorage.getItem('guestId');
+        }
+
+        const res = await fetch(`/api/invite/join/${code}`, { method: 'POST', headers });
+        if (!res.ok) {
+            alert('유효하지 않은 초대 코드입니다.');
+            return;
+        }
+
+        const data = await res.json();
+        sessionStorage.setItem('gameId', data.gameId);
+        sessionStorage.setItem('color', 'BLACK');
+        sessionStorage.setItem('timeLimit', '0');
+        window.location.href = '/play.html';
+    }
+
+    function startComputerGame() {
+        const skillLevel = parseInt(document.getElementById('skillLevel').value);
+        client.subscribe('/user/queue/computer', (msg) => {
+            const data = JSON.parse(msg.body);
+            sessionStorage.setItem('gameId', data.gameId);
+            sessionStorage.setItem('color', data.playerColor);
+            sessionStorage.setItem('timeLimit', '0');
+            sessionStorage.setItem('isComputerGame', 'true');
+            window.location.href = '/play.html';
+        });
+        client.publish({
+            destination: '/app/game/computer/start',
+            body: JSON.stringify({ skillLevel })
+        });
+    }
+
+    window.onload = init;
 </script>
 </body>
 </html>

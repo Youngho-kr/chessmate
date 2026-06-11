@@ -21,3 +21,6 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     disable-swagger-default-url: true
+
+stockfish:
+  path: /usr/games/stockfish

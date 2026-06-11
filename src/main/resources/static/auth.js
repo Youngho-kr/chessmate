@@ -27,7 +27,7 @@ async function authFetch(url, options = {}) {
         } else {
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
-            window.location.href = '/login.html';
+            // window.location.href = '/';
         }
     }
 
@@ -39,4 +39,21 @@ async function logout() {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     window.location.href = '/';
+}
+
+function getGuestId() {
+    let guestId = sessionStorage.getItem('guestId');
+    if (!guestId) {
+        guestId = crypto.randomUUID();
+        sessionStorage.setItem('guestId', guestId);
+    }
+    return guestId;
+}
+
+function getConnectHeaders() {
+    const accessToken = localStorage.getItem('accessToken');
+    if (accessToken) {
+        return { Authorization: 'Bearer ' + accessToken };
+    }
+    return { GuestId: getGuestId() };
 }

@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChessMate - 분석</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <style>
+        .page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .analysis-content {
+            flex: 1;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 24px;
+            padding: 32px 24px;
+        }
+
+        /* 평가 바 */
+        .eval-bar-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding-top: 24px;
+        }
+
+        .eval-bar-label {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .eval-bar-track {
+            width: 10px;
+            height: 480px;
+            background: var(--bg-surface);
+            border: 0.5px solid var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .eval-bar-black {
+            background: #333;
+            width: 100%;
+            transition: height 0.3s ease;
+        }
+
+        .eval-bar-white {
+            background: #fff;
+            border-top: 0.5px solid var(--border);
+            width: 100%;
+            position: absolute;
+            bottom: 0;
+            transition: height 0.3s ease;
+        }
+
+        .eval-score {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        /* 체스판 영역 */
+        .board-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .board-player {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        #board {
+            width: 480px;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .move-counter {
+            font-size: 12px;
+            color: var(--text-muted);
+            min-width: 52px;
+            text-align: center;
+            font-family: var(--font-mono);
+        }
+
+        .best-move-hint {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            height: 18px;
+        }
+
+        .best-move-hint span {
+            font-family: var(--font-mono);
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .kbd-hint {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* 수 목록 패널 */
+        .move-list-panel {
+            width: 220px;
+            border: 0.5px solid var(--border);
+            border-radius: var(--radius-lg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            max-height: 580px;
+        }
+
+        .panel-header {
+            padding: 12px 16px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+            border-bottom: 0.5px solid var(--border);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .accuracy-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 16px;
+            border-bottom: 0.5px solid var(--border);
+        }
+
+        .accuracy-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .accuracy-label {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .accuracy-value {
+            font-size: 15px;
+            font-weight: 500;
+            font-family: var(--font-mono);
+        }
+
+        .move-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+
+        .move-row {
+            display: grid;
+            grid-template-columns: 28px 1fr 1fr;
+            align-items: center;
+            min-height: 28px;
+        }
+
+        .move-num {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+            font-family: var(--font-mono);
+        }
+
+        .move-cell {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 8px;
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            margin: 0 2px;
+        }
+
+        .move-cell:hover {
+            background: var(--bg-surface);
+        }
+
+        .move-cell.active {
+            background: var(--bg-surface);
+            outline: 0.5px solid var(--border);
+        }
+
+        .move-san {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+
+        .class-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .dot-BEST        { background: #4ade80; }
+        .dot-GOOD        { background: #60a5fa; }
+        .dot-INACCURACY  { background: #facc15; }
+        .dot-MISTAKE     { background: #fb923c; }
+        .dot-BLUNDER     { background: #f87171; }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px 16px;
+            border-top: 0.5px solid var(--border);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.85);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 28px;
+            height: 28px;
+            border: 2px solid var(--border);
+            border-top-color: var(--text-primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+<!-- 분석 중 로딩 오버레이 -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">분석 중...</div>
+</div>
+
+<div class="page">
+    <nav class="navbar">
+        <a href="/main.html" class="navbar-logo">ChessMate</a>
+        <a href="/main.html">← 메인</a>
+    </nav>
+
+    <div class="analysis-content">
+
+        <!-- 평가 바 -->
+        <div class="eval-bar-wrap">
+            <span class="eval-bar-label">흑</span>
+            <div class="eval-bar-track">
+                <div class="eval-bar-black" id="evalBarBlack" style="height: 50%;"></div>
+                <div class="eval-bar-white" id="evalBarWhite" style="height: 50%;"></div>
+            </div>
+            <div class="eval-score" id="evalScore">0.00</div>
+            <span class="eval-bar-label">백</span>
+        </div>
+
+        <!-- 체스판 -->
+        <div class="board-section">
+            <div class="board-player" id="blackPlayer">—</div>
+            <div id="board"></div>
+            <div class="board-player" id="whitePlayer">—</div>
+
+            <div class="best-move-hint">
+                최선의 수: <span id="bestMoveVal"></span>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-outline btn-sm" onclick="goFirst()">⏮</button>
+                <button class="btn btn-outline btn-sm" onclick="goPrev()">◀</button>
+                <span class="move-counter" id="moveCounter">0 / 0</span>
+                <button class="btn btn-outline btn-sm" onclick="goNext()">▶</button>
+                <button class="btn btn-outline btn-sm" onclick="goLast()">⏭</button>
+            </div>
+
+            <div class="kbd-hint">← → 키보드로 이동</div>
+        </div>
+
+        <!-- 수 목록 패널 -->
+        <div class="move-list-panel">
+            <div class="panel-header">분석</div>
+            <div class="accuracy-row">
+                <div class="accuracy-item">
+                    <span class="accuracy-label">백</span>
+                    <span class="accuracy-value" id="whiteAcc">--%</span>
+                </div>
+                <div class="accuracy-item" style="text-align: right;">
+                    <span class="accuracy-label">흑</span>
+                    <span class="accuracy-value" id="blackAcc">--%</span>
+                </div>
+            </div>
+            <div class="move-list" id="moveList"></div>
+            <div class="legend">
+                <div class="legend-item"><div class="class-dot dot-BEST"></div>최선</div>
+                <div class="legend-item"><div class="class-dot dot-GOOD"></div>좋음</div>
+                <div class="legend-item"><div class="class-dot dot-INACCURACY"></div>부정확</div>
+                <div class="legend-item"><div class="class-dot dot-MISTAKE"></div>실수</div>
+                <div class="legend-item"><div class="class-dot dot-BLUNDER"></div>블런더</div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="/auth.js"></script>
+<script>
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) window.location.href = '/';
+
+    const params = new URLSearchParams(window.location.search);
+    const gameId = params.get('id');
+    if (!gameId) window.location.href = '/main.html';
+
+    let board;
+    let chess = new Chess();
+    let nodes = [];
+    let sanList = [];
+    let currentIndex = -1;
+
+    function uciToSan(uciMoves) {
+        const c = new Chess();
+        const result = [];
+        for (const uci of uciMoves) {
+            const m = c.move({ from: uci.substring(0, 2), to: uci.substring(2, 4), promotion: 'q' });
+            result.push(m ? m.san : uci);
+        }
+        return result;
+    }
+
+    function updateEvalBar(score) {
+        // score는 White 기준 정규화된 값
+        const clamped = Math.max(-800, Math.min(800, score));
+        const whitePercent = 50 + (clamped / 800) * 48;
+        document.getElementById('evalBarWhite').style.height = whitePercent + '%';
+        document.getElementById('evalBarBlack').style.height = (100 - whitePercent) + '%';
+        document.getElementById('evalScore').textContent =
+            (score > 0 ? '+' : '') + (clamped / 100).toFixed(2);
+    }
+
+    function renderMoveList() {
+        const list = document.getElementById('moveList');
+        list.innerHTML = '';
+        let i = 0;
+        let moveNum = 1;
+        while (i < nodes.length) {
+            const row = document.createElement('div');
+            row.className = 'move-row';
+
+            const numCell = document.createElement('div');
+            numCell.className = 'move-num';
+            numCell.textContent = moveNum + '.';
+            row.appendChild(numCell);
+
+            row.appendChild(createMoveCell(i));
+
+            if (i + 1 < nodes.length) {
+                row.appendChild(createMoveCell(i + 1));
+            } else {
+                row.appendChild(document.createElement('div'));
+            }
+
+            list.appendChild(row);
+            i += 2;
+            moveNum++;
+        }
+    }
+
+    function createMoveCell(index) {
+        const node = nodes[index];
+        const cell = document.createElement('div');
+        cell.className = 'move-cell';
+        cell.id = 'move-cell-' + index;
+        cell.innerHTML = `
+            <div class="class-dot dot-${node.classification}"></div>
+            <span class="move-san">${sanList[index] || node.san}</span>
+        `;
+        cell.onclick = () => goTo(index);
+        return cell;
+    }
+
+    function goTo(index) {
+        currentIndex = index;
+        chess = new Chess();
+        for (let i = 0; i <= index; i++) {
+            chess.move({ from: nodes[i].san.substring(0, 2), to: nodes[i].san.substring(2, 4), promotion: 'q' });
+        }
+        board.position(chess.fen());
+        updateEvalBar(nodes[index].evalScore);
+
+        document.getElementById('bestMoveVal').textContent = nodes[index].bestMove || '';
+        document.getElementById('moveCounter').textContent = (index + 1) + ' / ' + nodes.length;
+
+        document.querySelectorAll('.move-cell').forEach(el => el.classList.remove('active'));
+        const activeCell = document.getElementById('move-cell-' + index);
+        if (activeCell) {
+            activeCell.classList.add('active');
+            activeCell.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+    }
+
+    function goFirst() { if (nodes.length > 0) goTo(0); }
+    function goPrev()  { if (currentIndex > 0) goTo(currentIndex - 1); }
+    function goNext()  { if (currentIndex < nodes.length - 1) goTo(currentIndex + 1); }
+    function goLast()  { if (nodes.length > 0) goTo(nodes.length - 1); }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'ArrowLeft')  { e.preventDefault(); goPrev(); }
+        if (e.key === 'ArrowRight') { e.preventDefault(); goNext(); }
+    });
+
+    async function init() {
+        const gameData = await authFetch(`/api/games/${gameId}`).then(r => r.json());
+        document.getElementById('whitePlayer').textContent = gameData.whitePlayer + ' (백)';
+        document.getElementById('blackPlayer').textContent = gameData.blackPlayer + ' (흑)';
+
+        // 분석 요청 시 로딩 표시
+        document.getElementById('loadingOverlay').classList.add('show');
+        try {
+            const analysisRes = await authFetch(`/api/analysis/${gameId}`, { method: 'POST' });
+            const analysisData = await analysisRes.json();
+
+            nodes = analysisData.tree;
+            document.getElementById('whiteAcc').textContent = analysisData.whiteAccuracy + '%';
+            document.getElementById('blackAcc').textContent = analysisData.blackAccuracy + '%';
+            document.getElementById('moveCounter').textContent = '0 / ' + nodes.length;
+
+            sanList = uciToSan(nodes.map(n => n.san));
+
+            board = Chessboard('board', {
+                position: 'start',
+                draggable: false,
+                pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
+            });
+
+            renderMoveList();
+            updateEvalBar(0);
+
+            document.getElementById('loadingOverlay').classList.remove('show');
+        } catch (e) {
+            document.getElementById('loadingOverlay').innerHTML = `
+                <div class="loading-text" style="color: var(--danger);">분석 중 오류가 발생했습니다.</div>
+                <a href="/main.html" class="btn btn-outline btn-sm">메인으로</a>
+            `;
+        }
+    }
+
+    window.onload = init;
+</script>
+</body>
+</html>
