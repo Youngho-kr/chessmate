@@ -146,12 +146,8 @@ public class GameService {
                            PlayerColor winner, ResultReason resultReason) {
         timerService.stop(gameId);
 
-        User whiteUser = gameState.isComputerGame() && gameState.getComputerColor() == PlayerColor.WHITE ? null
-                : userRepository.findByEmail(gameState.getWhiteEmail())
-                  .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
-        User blackUser = gameState.isComputerGame() && gameState.getComputerColor() == PlayerColor.BLACK ? null
-                : userRepository.findByEmail(gameState.getBlackEmail())
-                  .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        User whiteUser = resolveUser(gameState.getWhiteEmail(), gameState, PlayerColor.WHITE);
+        User blackUser = resolveUser(gameState.getBlackEmail(), gameState, PlayerColor.BLACK);
 
         String pgn = String.join(" ", gameState.getMoves());
         gameRecordService.save(pgn, resultReason, whiteUser, blackUser, winner);
@@ -173,10 +169,12 @@ public class GameService {
         PlayerColor userColor = Math.random() < 0.5 ? PlayerColor.WHITE : PlayerColor.BLACK;
         PlayerColor computerColor = userColor == PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
 
-        String whitEmail = userColor == PlayerColor.WHITE ? email : "stockfish " + skillLevel;
-        String blackEmail = userColor == PlayerColor.BLACK ? email : "stockfish " + skillLevel;
+        String stockfishId = "stockfish: " + skillLevel;
+        String whitEmail = userColor == PlayerColor.WHITE ? email : stockfishId;
+        String blackEmail = userColor == PlayerColor.BLACK ? email : stockfishId;
 
-        GameState gameState = GameState.createComputerGame(gameId, whitEmail, blackEmail, skillLevel, computerColor);
+        GameState gameState = GameState.createComputerGame(
+                gameId, whitEmail, blackEmail, skillLevel, computerColor);
         gameStateService.save(gameState);
 
         return new ComputerGameResponse(gameId, userColor);
@@ -257,5 +255,15 @@ public class GameService {
         gameState.setTurn(
                 gameState.getTurn() == PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE
         );
+    }
+
+    /**
+     * 로그인 사용자의 경우 DB에서 조회, 게스트 또는 컴퓨터면 null 반환
+     */
+    private User resolveUser(String email, GameState gameState, PlayerColor color) {
+        if (gameState.isComputerGame() && gameState.getComputerColor() == color) return null;
+        if (email.startsWith("guest:")) return null;
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회우너입니다."));
     }
 }

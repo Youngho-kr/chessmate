@@ -3,6 +3,8 @@ package com.chessmate.chess_server.domain.guest;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.security.Principal;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -38,5 +40,15 @@ public class GuestSessionService {
         return Boolean.TRUE.equals(
                 redisTemplate.hasKey(KEY_PREFIX + guestId)
         );
+    }
+
+    /**
+     * 로그인 사용자는 email, 게스트는 "guest:{guestId}" 형식의 식별자를 반환한다.
+     * 인증 정보가 없거나 유효하지 않은 게스트 세션이라면 empty를 반환한다.
+     */
+    public Optional<String> resolveId(Principal principal, String guestId) {
+        if (principal != null) return Optional.of(principal.getName());
+        if (guestId != null && isValid(guestId)) return Optional.of(KEY_PREFIX + guestId);
+        return Optional.empty();
     }
 }
