@@ -35,7 +35,6 @@ public class GameService {
         this.gameStateService = gameStateService;
         this.messagingTemplate = messagingTemplate;
         this.userRepository = userRepository;
-        this.eloService = eloService;
         this.timerService = timerService;
         this.gameRecordService = gameRecordService;
         this.stockfishService = stockfishService;
