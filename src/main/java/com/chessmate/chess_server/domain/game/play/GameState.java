@@ -49,7 +49,7 @@ public class GameState {
 
     public static GameState createComputerGame(
             String gameId, String whiteEmail, String blackEmail, int skillLevel, PlayerColor computerColor) {
-        GameState state = GameState.create(gameId, whiteEmail, blackEmail, skillLevel);
+        GameState state = GameState.create(gameId, whiteEmail, blackEmail, 0L);
         state.computerGame = true;
         state.computerColor = computerColor;
         state.skillLevel = skillLevel;

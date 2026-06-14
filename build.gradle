@@ -23,7 +23,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	// h2 database
-	runtimeOnly 'com.h2database:h2'
+	runtimeOnly 'com.h2database:h2'	// 로컬 개발용으로 유지
+	// MySQL
+	runtimeOnly 'com.mysql:mysql-connector-j'
 	// JWT
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
