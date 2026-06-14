@@ -52,7 +52,9 @@ public class TimerService {
             gameStateService.update(gameState);
 
             if (gameState.getWhiteTimeLeftMs() <= 0 || gameState.getBlackTimeLeftMs() <= 0) {
-                handleTimeout(gameId, gameState);
+                if (!gameState.isComputerGame()) {
+                    handleTimeout(gameId, gameState);
+                }
             }
         }
     }

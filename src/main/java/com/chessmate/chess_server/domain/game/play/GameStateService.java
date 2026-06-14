@@ -25,6 +25,7 @@ public class GameStateService {
             String key = KEY_PREFIX + gameState.getGameId();
             String value = objectMapper.writeValueAsString(gameState);
             redisTemplate.opsForValue().set(key, value, GAME_TTL, TimeUnit.SECONDS);
+            System.out.println("GameState saved: " + gameState.getGameId());
         } catch (Exception e) {
             throw new RuntimeException("게임 상태 저장 실패", e);
         }

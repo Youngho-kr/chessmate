@@ -212,7 +212,7 @@ public class GameService {
         gameStateService.update(gameState);
 
         int requiredCount = gameState.isComputerGame() ? 1 : 2;
-        gameStateService.update(gameState);
+//        gameStateService.update(gameState);
 
         if (gameState.getReadyCount() >= requiredCount) {
             if (gameState.getWhiteTimeLeftMs() > 0) {
@@ -223,7 +223,11 @@ public class GameService {
                     new GameStartResponse(gameState.getTurn()));
 
             if (gameState.isComputerGame() && gameState.getComputerColor() == PlayerColor.WHITE) {
-                makeComputerMove(gameId, gameState);
+                try {
+                    makeComputerMove(gameId, gameState);
+                } catch (Exception e) {
+                    System.err.println("Stockfish 실행 실패: " + e.getMessage());
+                }
             }
         }
     }
