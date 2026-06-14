@@ -52,6 +52,9 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" > /home/ubuntu/chess-server/.env
+            echo "MYSQL_USER=${{ secrets.MYSQL_USER }}" > /home/ubuntu/chess-server/.env
+            echo "MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}" > home/ubuntu/chess-server/.env
+            echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" > home/ubuntu/chess-server/.env
 
       - name: Deploy on EC2
         uses: appleboy/ssh-action@master
